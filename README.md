@@ -5,7 +5,13 @@
 ![Made with ❤️](https://img.shields.io/badge/made%20with-%E2%9D%A4-red)
 
 Repository che raccoglie appunti e riassunti del primo anno della Bachelor's Degree in Informatica (UniGE).
-Gli appunti sono organizzati per **corso** e per **settimana**.
+Tutti i miei appunti sono organizzati per **corso** e per **settimana**, ogni appunto è stato scritto direttamente in Obsidian (o scritto su carta e trascritto su Obsidian), di ogni file ci sono 3 versioni (solitamente).
+1. Versione normale (YYYY-MM-DD.md)
+2. Versione riassunta e riordinata con l'ausilio di AI (YYYY-MM-DD LLM.md)
+  Le versioni fatte con l'AI sono create con lo scopo di essere più ordinate, nel caso i miei appunti siano disordinati o presi in fretta, vengono dati in "pasto" all'AI con l'obbiettivo    di renderli leggibili anche ad un terzo (come te che stai leggendo), ci tengo a precisare che non viene aggiunta alcuna informazione dall'AI, vengono semplicemente ordinati gli appunti    presi a lezione.
+3. Versione in PDF (YYYY-MM-DD.pdf)
+
+
 
 ---
 
