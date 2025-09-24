@@ -4,7 +4,7 @@
 ![Updated](https://img.shields.io/badge/last%20update-September%202025-orange)
 ![Made with ❤️](https://img.shields.io/badge/made%20with-%E2%9D%A4-red)
 
-Repository che raccoglie appunti e riassunti dei corsi universitari.  
+Repository che raccoglie appunti e riassunti del primo anno della Bachelor's Degree in Informatica (UniGE).
 Gli appunti sono organizzati per **corso** e per **settimana**.
 
 ---
@@ -60,6 +60,8 @@ Gli appunti sono organizzati per **corso** e per **settimana**.
 
 - [2025-09-23.md](80299%20Introduzione%20alla%20Programmazione/22-28%20September/2025-09-23.md)  
 - [2025-09-23 RL.md](80299%20Introduzio)
+
+</details>
 
 ---
 
