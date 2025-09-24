@@ -1,4 +1,4 @@
-# 📚 Appunti Pubblici
+# 📚 Appunti
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Updated](https://img.shields.io/badge/last%20update-September%202025-orange)
