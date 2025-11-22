@@ -11,7 +11,13 @@ Tutti i miei appunti sono organizzati per **corso** e per **settimana**, ogni ap
   Le versioni fatte con l'AI sono create con lo scopo di essere più ordinate, nel caso i miei appunti siano disordinati o presi in fretta, vengono dati in "pasto" all'AI con l'obbiettivo    di renderli leggibili anche ad un terzo (come te che stai leggendo), ci tengo a precisare che non viene aggiunta alcuna informazione dall'AI, vengono semplicemente ordinati gli appunti    presi a lezione.
 3. Versione in PDF (YYYY-MM-DD.pdf)
 
+## Struttura della cartella IP Laboratorio
 
+Gli esercizi di IP Laboratorio sono organizzati con una cartella `Latest` che contiene sempre gli esercizi più recenti.
+
+Quando vengono pubblicati nuovi esercizi:
+- La cartella `Latest` viene aggiornata con i nuovi contenuti
+- Gli esercizi precedenti vengono archiviati in una cartella denominata con la data di inizio svolgimento (es. `11/03/2024`)
 
 ---
 
