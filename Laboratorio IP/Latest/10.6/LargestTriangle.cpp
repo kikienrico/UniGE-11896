@@ -8,7 +8,7 @@ int main() {
     vector<Triangle> Triangolo(3);
     int numeroTriangolo;
     double biggestArea;
-    for (int i = 0; i < 3; i++) {
+    for (size_t i = 0; i < 3; i++) {
         do {
             cout << "Inserisci le coordinate di un triangolo (x, y)\nDevono essere coordinate diverse tra di loro\n";
             cout << "Vertice 1 (x, y): ";

@@ -12,8 +12,6 @@ int main() {
 
     //!T1 deve rappresentare un ora precedente o uguale a T2 (T<=T2)
 
-
-
     try {
         //prima lettura dati
         cout << "Tenere a mente che il primo orario DEVE essere <= al secondo" << endl;

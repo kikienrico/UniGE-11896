@@ -14,7 +14,7 @@ int main() {
 
     cout << "Inserici " << N << " coordinate per costruire un poligono" << endl;
 
-    for(int i = 0; i < N; i++) {
+    for(size_t i = 0; i < N; i++) {
         cout << "Inserisci la " << i+1 << "a coordinata (x, y): ";
         cin >> polygon[i].x >> polygon[i].y; //vector[(x,y), (x,y)]
         // do {
@@ -27,11 +27,11 @@ int main() {
     exception e;
 
     try {
-        for(int i = 0; i < N-1; i++) {
+        for(size_t i = 0; i < N-1; i++) {
         // if ((polygon[i].x == polygon[i+1].x) && (polygon[i].y == polygon[i+1].y)) {
         //     throw e;
         // }
-            for(int j = i+1; j < N-1; j++) {
+            for(size_t j = i+1; j < N-1; j++) {
                 if ((polygon[i].x == polygon[j].x) && (polygon[i].y == polygon[j].y)) {
                     throw e;
                 }
@@ -48,7 +48,7 @@ int main() {
     bool sameLength=false;
     bool closed=false;
 
-    for(int i = 0; i < N-1; i++) {
+    for(size_t i = 0; i < N-1; i++) {
         totalLength+=sqrt(pow((polygon[i+1].x-polygon[i].x), 2)+pow((polygon[i+1].y-polygon[i].y), 2));
     }
 

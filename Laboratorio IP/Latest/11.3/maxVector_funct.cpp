@@ -2,13 +2,13 @@
 
 using namespace std;
 
-int maxVector(const std::vector<int>& v) {
+int maxVector(const std::vector<int>& t) {
     string e="ERROR: vector size = 0";
-    if (v.size()==0) throw e;
+    if (t.size()==0) throw e;
 
-    int max=v[0];
-    for(int i = 1; i < v.size(); i++) {
-        if (max<v[i]) max=v[i];
+    int max=t[0];
+    for(size_t i = 1; i < t.size(); i++) {
+        if (max<t[i]) max=t[i];
     }
 
     return max;
