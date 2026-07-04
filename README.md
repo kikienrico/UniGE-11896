@@ -44,7 +44,7 @@ Nella cartella [Simulatori](./80298%20Algoritmi%20e%20Strutture%20Dati/Simulator
 
 - **`Appunti presi a lezione`** — dentro ogni corso, i PDF/markdown delle singole lezioni
 - **`Appunti per studio esame`** — riassunti e schemi pensati per la preparazione dell'esame (dove presenti)
-- **`Laboratorio IP`** — gli esercizi sono organizzati con una cartella `Latest` che contiene sempre i più recenti; quando escono nuovi esercizi, i precedenti vengono archiviati in una cartella con la data di inizio svolgimento (es. `11/03/2024`)
+- **`Laboratorio IP`** — gli esercizi sono organizzati con una cartella `Latest` che contiene sempre i più recenti; quando escono nuovi esercizi, i precedenti vengono archiviati in una cartella con la data di inizio svolgimento (es. `07-10-2025`)
 - **`Riferimenti Utili`** — cheat sheet e riferimenti trasversali (LaTeX, Vim, RISC-V, …)
 
 ---
