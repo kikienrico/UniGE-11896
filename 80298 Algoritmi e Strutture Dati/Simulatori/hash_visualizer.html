@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hash Table Visualizer — insert, search, delete con liste di collisione</title>
+<style>
+  :root{
+    --bg:#fbf9f0; --ink:#2a2a2a; --node:#e9e4d0; --nodeb:#b8ad86;
+    --move:#ff8c3b; --moveb:#d9670f; --cmp:#3b9bff; --del:#ff5252;
+    --ok:#31a354; --okb:#1e7e34; --panel:#fff; --build:#7c4dff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);padding:16px;}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#777;font-size:13px;margin:0 0 14px}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+       background:var(--panel);border:1px solid #e6e0cf;border-radius:12px;padding:12px;margin-bottom:12px}
+  .bar label{font-size:13px}
+  input[type=text]{padding:7px 9px;border:1px solid #cfc8b4;border-radius:8px;font-size:15px;
+       font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  #key{width:110px}
+  #val{width:90px}
+  button{padding:8px 12px;border:0;border-radius:9px;font-size:14px;cursor:pointer;background:#eee;color:#222}
+  button:hover{filter:brightness(.96)}
+  button:focus-visible{outline:2px solid var(--cmp);outline-offset:2px}
+  .b-primary{background:#3b9bff;color:#fff}
+  .b-del{background:#ff5252;color:#fff}
+  .b-ok{background:#31a354;color:#fff}
+  .b-ghost{background:#efeadb}
+  .b-warn{background:#ffe08a}
+  .seg{display:inline-flex;border:1px solid #cfc8b4;border-radius:9px;overflow:hidden}
+  .seg button{background:#f4efe1;border-radius:0;margin:0}
+  .seg button.active{background:#2a2a2a;color:#fff}
+  .stage{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+  @media (min-width: 880px){
+    .stage{grid-template-columns:3fr 2fr}
+  }
+  .card{background:var(--panel);border:1px solid #e6e0cf;border-radius:12px;padding:12px;min-width:0}
+  svg{width:100%;height:auto;display:block}
+  .msg{font-size:15px;min-height:44px;line-height:1.35;background:#fff8e8;border:1px solid #f0e2b8;border-radius:10px;padding:10px 12px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#555;margin-top:8px}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:5px;border:2px solid #999}
+  .foot{font-size:12px;color:#888;margin-top:10px}
+  .foot a{color:#3b6ea5}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  #pseudo{background:#faf8ef;border:1px solid #eee2c8;border-radius:8px;padding:8px 10px;margin-bottom:10px;overflow-x:auto}
+  .pline{padding:2px 6px;border-radius:4px;white-space:pre;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+         font-size:12.5px;color:#666;line-height:1.6}
+  .pline.active{background:#eaf3ff;color:#0b5fd7;font-weight:700;box-shadow:inset 3px 0 0 var(--cmp)}
+  #complexity{font-size:12px;color:#666;margin:2px 0 10px}
+  #complexity.degen{color:#c62828;font-weight:600}
+</style>
+</head>
+<body>
+  <h1>Hash Table Visualizer — insert, search & delete</h1>
+  <p class="sub">Dizionario con <b>tabella di hash e liste di collisione</b>: la funzione trasforma la chiave in un <b>indice</b> (bucket); le <b>collisioni</b> finiscono in lista. Guarda il calcolo di h passo-passo, la gestione delle <b>chiavi duplicate</b> e cosa succede con una funzione <b>pessima</b>.</p>
+
+  <div class="bar">
+    <label>Funzione di hash:</label>
+    <div class="seg" id="fnSeg">
+      <button data-f="mod" class="active">h = k mod M (chiave intera)</button>
+      <button data-f="exam">h = (a·b + c·d) mod M (chiave a 4 cifre — stile esame)</button>
+      <button data-f="custom">✏️ personalizzata</button>
+    </div>
+    <span style="width:10px"></span>
+    <label>M (bucket):</label>
+    <div class="seg" id="mSeg">
+      <button data-m="5">5</button>
+      <button data-m="7" class="active">7</button>
+      <button data-m="11">11</button>
+    </div>
+    <input type="text" id="mInput" placeholder="altro…" style="width:64px" autocomplete="off">
+    <button class="b-ghost" id="mApply">OK</button>
+    <span id="customBox" class="row" style="display:none">
+      <label><b>h = (</b></label>
+      <input type="text" id="fnInput" placeholder="es. a·b + c·d   oppure   3·k + 1" style="width:230px" autocomplete="off">
+      <label><b>) mod M</b></label>
+      <button class="b-ghost" id="fnApply">Applica</button>
+    </span>
+  </div>
+
+  <div class="bar">
+    <label>Chiave:</label>
+    <input type="text" id="key" placeholder="es. 38" autocomplete="off">
+    <label>Valore:</label>
+    <input type="text" id="val" placeholder="(opz.)" maxlength="5" autocomplete="off">
+    <button class="b-primary" id="ins">➕ Inserisci</button>
+    <button class="b-ok" id="search">🔍 Cerca</button>
+    <button class="b-del" id="del">➖ Cancella</button>
+    <span style="width:10px"></span>
+    <button class="b-ghost" id="rand">🎲 Riempi a caso</button>
+    <button class="b-warn" id="worst">📉 Demo caso pessimo</button>
+    <button class="b-ghost" id="reset">↺ Reset</button>
+  </div>
+
+  <div class="stage">
+    <div class="card">
+      <svg id="table" viewBox="0 0 900 420" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <marker id="arrHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#b0a583"/>
+          </marker>
+          <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="1.5" stdDeviation="1.2" flood-color="#000" flood-opacity="0.15"/>
+          </filter>
+        </defs>
+        <g id="bucketsLayer"></g>
+        <rect id="rowhl" x="4" width="892" height="0" rx="10" fill="#3b9bff" opacity="0"/>
+        <g id="edgesLayer"></g>
+        <g id="nodesLayer"></g>
+      </svg>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--move);border-color:var(--moveb)"></span>elemento nuovo / corrente</span>
+        <span><span class="dot" style="background:#fff;border-color:var(--cmp)"></span>confronto chiave</span>
+        <span><span class="dot" style="background:var(--del);border-color:#c62828"></span>da cancellare / duplicato</span>
+        <span><span class="dot" style="background:var(--ok);border-color:var(--okb)"></span>trovato</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <button class="b-ghost" id="prev">⏮ Indietro</button>
+        <button class="b-ghost" id="playPause">▶ Play</button>
+        <button class="b-ghost" id="next">⏭ Avanti</button>
+        <span id="counter" style="font-size:12px;color:#888"></span>
+        <span style="flex:1"></span>
+        <label style="font-size:12px;color:#666">velocità</label>
+        <input type="range" id="speed" min="250" max="1600" value="850" step="50">
+      </div>
+      <div id="pseudo"></div>
+      <div id="complexity">Tabella: —</div>
+      <div class="msg" id="msg">Inserisci qualche chiave e guarda in quale bucket finisce. Poi prova <b>Cerca</b>, <b>Cancella</b> e la demo del caso pessimo.</div>
+      <div class="foot">Scorciatoie: <b>spazio</b> = play/pausa, <b>← →</b> = passo indietro/avanti. All'esame la funzione era <b>(a·b + c·d) mod 7</b>: selezionala e allenati col calcolo!</div>
+    </div>
+  </div>
+  <div class="foot">-kiki</div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const svg = $('#table');
+  const bucketsLayer = $('#bucketsLayer');
+  const edgesLayer = $('#edgesLayer');
+  const nodesLayer = $('#nodesLayer');
+  const rowhl = $('#rowhl');
+  const NS = 'http://www.w3.org/2000/svg';
+
+  const reducedMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  let M = 7;
+  let fnMode = 'mod';            // 'mod' | 'exam'
+  let table = emptyTable(M);     // array di liste di {id, key, val}
+  let idCounter = 0;
+  let frames = [];
+  let fi = 0;
+  let timer = null;
+  let curOp = null;
+
+  let nodeEls = new Map();
+  let edgeEls = new Map();
+  let curPos = new Map();
+  let rafId = null;
+  let renderedM = -1;
+
+  const SYLL = ['ma','co','gra','pe','le','re','ca','giu','so','ti','ne','ba','vi','du'];
+  let syllIdx = 0;
+  const nextVal = () => SYLL[(syllIdx++) % SYLL.length];
+
+  function emptyTable(m){ return Array.from({length:m}, ()=>[]); }
+  const newId = () => 'n' + (idCounter++);
+
+  // ---- funzione di hash ----
+  // Modalità personalizzata: l'utente scrive l'espressione dentro "h = ( … ) mod M".
+  // Variabili ammesse: a,b,c,d (le 4 cifre della chiave) e k (la chiave intera).
+  // Niente eval libero: whitelist di caratteri + compilazione controllata con chiave di prova.
+  let customExpr = 'a·b + c·d';
+  let customFn = (a,b,c,d,k) => a*b + c*d;
+  let customUsesDigits = true;
+
+  function compileCustom(raw){
+    const pretty = raw.trim().replace(/\s+/g,' ');
+    const expr = pretty.replace(/[·x×]/gi,'*').replace(/−/g,'-');
+    if(!expr) return {err:"Scrivi un'espressione, es. <b>a·b + c·d</b> oppure <b>3·k + 1</b>."};
+    if(!/^[abcdk0-9+\-*()\s]+$/.test(expr))
+      return {err:'Caratteri ammessi: le variabili <b>a b c d</b> (cifre della chiave) o <b>k</b> (chiave intera), numeri, <b>+ − · ( )</b>.'};
+    let fn;
+    try {
+      fn = new Function('a','b','c','d','k', `"use strict"; return (${expr});`);
+      const test = fn(1,2,3,4,1234);
+      if(!Number.isFinite(test)) return {err:"L'espressione non produce un numero."};
+    } catch(e){
+      return {err:'Espressione non valida (controlla parentesi e operatori).'};
+    }
+    return {fn, pretty: pretty.replace(/\*/g,'·'), usesDigits: /[abcd]/.test(expr)};
+  }
+
+  function fnLabel(){
+    if(fnMode === 'mod') return `k mod ${M}`;
+    if(fnMode === 'exam') return `(a·b + c·d) mod ${M}`;
+    return `(${customExpr}) mod ${M}`;
+  }
+  function usesDigits(){ return fnMode === 'exam' || (fnMode === 'custom' && customUsesDigits); }
+
+  function hashOf(key){
+    if(fnMode === 'mod') return Number(key) % M;
+    if(fnMode === 'exam'){
+      const [a,b,c,d] = key.split('').map(Number);
+      return (a*b + c*d) % M;
+    }
+    const k = Number(key);
+    const [a,b,c,d] = customUsesDigits ? key.split('').map(Number) : [0,0,0,0];
+    const v = Math.trunc(customFn(a,b,c,d,k));
+    return ((v % M) + M) % M;   // modulo sempre in 0..M-1, anche con valori negativi
+  }
+  function calcText(key){
+    if(fnMode === 'mod') return `h(${key}) = ${key} mod ${M} = <b>${Number(key)%M}</b>`;
+    if(fnMode === 'exam'){
+      const [a,b,c,d] = key.split('').map(Number);
+      const s = a*b + c*d;
+      return `h(${key}) = (${a}·${b} + ${c}·${d}) mod ${M} = (${a*b} + ${c*d}) mod ${M} = ${s} mod ${M} = <b>${s%M}</b>`;
+    }
+    const k = Number(key);
+    const [a,b,c,d] = customUsesDigits ? key.split('').map(Number) : [0,0,0,0];
+    const sost = customExpr.replace(/[abcdk]/g, m => ({a,b,c,d,k})[m]);
+    const v = Math.trunc(customFn(a,b,c,d,k));
+    const h = ((v % M) + M) % M;
+    const negNote = v < 0 ? ` <i>(risultato negativo: si riporta nell'intervallo 0–${M-1})</i>` : '';
+    return `h(${key}) = (${sost}) mod ${M} = ${v} mod ${M} = <b>${h}</b>${negNote}`;
+  }
+  function validKey(raw){
+    const k = raw.trim();
+    if(usesDigits()){
+      if(!/^\d{4}$/.test(k)) return null;
+      return k;
+    }
+    if(!/^\d{1,6}$/.test(k)) return null;
+    return String(Number(k));
+  }
+
+  // ---- snapshot & frames ----
+  function snap(){
+    return { m: M, buckets: table.map(list => list.map(o => ({id:o.id, key:o.key, val:o.val}))) };
+  }
+  function note(pc, moveId, cmpIds, msg, extra){
+    frames.push(Object.assign({
+      snap: snap(),
+      move: (moveId==null ? null : moveId),
+      cmp: cmpIds || [],
+      bucket: null,
+      msg, op: curOp, pc
+    }, extra || {}));
+  }
+
+  // ---- pseudocodice ----
+  const PSEUDO = {
+    idle: [
+      "In attesa di un'operazione…",
+      'Inserisci, cerca o cancella una chiave.'
+    ],
+    insert: [
+      'procedure INSERT(k, v)',
+      '  i ← h(k)                      // calcolo l\'indice del bucket',
+      '  for each (k\',v\') nella lista del bucket i:',
+      '    if k\' = k:                  // chiave duplicata!',
+      '      return "inserimento ignorato"',
+      '  aggiungi (k, v) in fondo alla lista del bucket i'
+    ],
+    search: [
+      'procedure SEARCH(k)',
+      '  i ← h(k)                      // calcolo l\'indice del bucket',
+      '  for each (k\',v\') nella lista del bucket i:',
+      '    if k\' = k: return v\'        // trovato ✅',
+      '  return null                   // non trovato ❌'
+    ],
+    delete: [
+      'procedure DELETE(k)',
+      '  i ← h(k)                      // calcolo l\'indice del bucket',
+      '  for each (k\',v\') nella lista del bucket i:',
+      '    if k\' = k:',
+      '      rimuovo il nodo dalla lista; return   // fatto ✅',
+      '  // k non c\'è: niente da cancellare ❌'
+    ]
+  };
+  let lastOp;
+  function renderPseudo(op, pc){
+    const box = $('#pseudo');
+    const key = op || 'idle';
+    if(key !== lastOp){
+      lastOp = key;
+      box.innerHTML = '';
+      (PSEUDO[key]||[]).forEach((line, idx)=>{
+        const d = document.createElement('div');
+        d.className = 'pline';
+        d.dataset.i = idx;
+        d.textContent = line;
+        box.appendChild(d);
+      });
+    }
+    [...box.children].forEach(el=>{
+      el.classList.toggle('active', pc!=null && Number(el.dataset.i)===pc);
+    });
+  }
+
+  function updateComplexity(snapshot){
+    const n = snapshot.buckets.reduce((s,b)=>s+b.length, 0);
+    const maxChain = Math.max(0, ...snapshot.buckets.map(b=>b.length));
+    const el = $('#complexity');
+    let txt = `Tabella: n=${n} elementi, m=${snapshot.m} bucket, fattore di carico n/m=${(n/snapshot.m).toFixed(2)}, lista più lunga=${maxChain}.`;
+    let degen = false;
+    if(n === 0){ txt = `Tabella vuota: m=${snapshot.m} bucket.`; }
+    else if(maxChain === n && n >= 3){
+      txt += ` ⚠️ PESSIMO: tutte le chiavi in un bucket → insert/search/delete = Θ(n), come una lista!`;
+      degen = true;
+    } else if(maxChain <= Math.ceil(n/snapshot.m) + 1){
+      txt += ` Distribuzione ~uniforme → costo ≈ Θ(n/m).`;
+    }
+    el.textContent = txt;
+    el.classList.toggle('degen', degen);
+  }
+
+  // ---- operazioni ----
+  function findInBucket(b, key){ return table[b].findIndex(o=>o.key===key); }
+
+  function insertOp(key, val){
+    frames = []; curOp = 'insert';
+    const b = hashOf(key);
+    note(1, null, [], `${calcText(key)} → la coppia (${key}, "${val}") va nel bucket <b>${b}</b>.`, {bucket:b});
+    for(const o of table[b]){
+      note(2, null, [o.id], `Scorro la lista del bucket ${b}: confronto la chiave <b>${key}</b> con <b>${o.key}</b>.`, {bucket:b});
+      if(o.key === key){
+        note(4, null, [], `<b>${o.key}</b> = <b>${key}</b> → chiave <b>duplicata</b>: "coppia chiave-valore ignorata perché la chiave è duplicata" (va scritto esplicitamente all'esame!). ⚠️`, {bucket:b, delMark:o.id});
+        play(); return;
+      }
+    }
+    const item = {id: newId(), key, val};
+    table[b].push(item);
+    const len = table[b].length;
+    note(5, item.id, [], `Nessun duplicato: aggiungo (<b>${key}</b>, "<b>${val}</b>") in fondo alla lista del bucket ${b}.`, {bucket:b});
+    note(null, item.id, [], len > 1
+      ? `✅ Inserito. Il bucket ${b} ora ha <b>${len} elementi</b>: è una <b>collisione</b> — chiavi diverse, stesso indice. Costo di questo insert: ${len} passi.`
+      : `✅ Inserito: il bucket ${b} era vuoto, costo Θ(1).`);
+    play();
+  }
+
+  function searchOp(key){
+    frames = []; curOp = 'search';
+    const b = hashOf(key);
+    note(1, null, [], `${calcText(key)} → cerco <b>solo</b> nella lista del bucket <b>${b}</b> (il resto della tabella non si guarda!).`, {bucket:b});
+    let steps = 0;
+    for(const o of table[b]){
+      steps++;
+      note(2, null, [o.id], `Confronto <b>${key}</b> con <b>${o.key}</b>.`, {bucket:b});
+      if(o.key === key){
+        note(3, null, [], `<b>TROVATO</b>: chiave ${key} → valore "<b>${o.val}</b>". ✅ Costo: ${steps} confront${steps===1?'o':'i'} (la lunghezza della lista, non n!).`, {bucket:b, ok:[o.id]});
+        play(); return;
+      }
+    }
+    note(4, null, [], table[b].length
+      ? `Lista del bucket ${b} finita: <b>${key}</b> non c'è. ❌ (${steps} confronti)`
+      : `Il bucket ${b} è <b>vuoto</b>: <b>${key}</b> non c'è. ❌ Costo Θ(1).`, {bucket:b});
+    play();
+  }
+
+  function deleteOp(key){
+    frames = []; curOp = 'delete';
+    const b = hashOf(key);
+    note(1, null, [], `${calcText(key)} → cerco <b>${key}</b> nella lista del bucket <b>${b}</b>.`, {bucket:b});
+    for(let j=0; j<table[b].length; j++){
+      const o = table[b][j];
+      note(2, null, [o.id], `Confronto <b>${key}</b> con <b>${o.key}</b>.`, {bucket:b});
+      if(o.key === key){
+        note(3, null, [], `Trovato! Rimuovo il nodo (<b>${o.key}</b>, "${o.val}") dalla lista.`, {bucket:b, delMark:o.id});
+        table[b].splice(j,1);
+        note(4, null, [], `✅ Cancellato. La lista del bucket ${b} si ricompatta${table[b].length?` (restano ${table[b].length} element${table[b].length===1?'o':'i'})`:' (bucket di nuovo vuoto)'}.`, {bucket:b});
+        play(); return;
+      }
+    }
+    note(5, null, [], `<b>${key}</b> non è nella tabella: niente da cancellare. ❌`, {bucket:b});
+    play();
+  }
+
+  function bulkInsert(pairs, introMsg, outroMsg, showScan){
+    frames = []; curOp = 'insert';
+    note(null, null, [], introMsg);
+    for(const [key, val] of pairs){
+      const b = hashOf(key);
+      note(1, null, [], `${calcText(key)} → bucket <b>${b}</b>.`, {bucket:b});
+      const item = {id: newId(), key, val};
+      table[b].push(item);
+      const len = table[b].length;
+      note(5, item.id, [], len>1
+        ? `(${key}, "${val}") in fondo alla lista del bucket ${b} — <b>collisione</b> (${len}° elemento).`
+        : `(${key}, "${val}") nel bucket ${b} (era vuoto).`, {bucket:b});
+    }
+    note(null, null, [], outroMsg);
+    play();
+  }
+
+  function randomKey(){
+    return usesDigits()
+      ? '' + ri(1,9) + ri(0,9) + ri(0,9) + ri(0,9)
+      : String(ri(1, 99));
+  }
+
+  function randomFill(){
+    table = emptyTable(M);
+    const pairs = [];
+    const used = new Set();
+    const k = 7 + ri(0,2);
+    while(pairs.length < k){
+      const key = randomKey();
+      if(used.has(key)) continue;
+      used.add(key);
+      pairs.push([key, nextVal()]);
+    }
+    bulkInsert(pairs,
+      `Inserisco ${k} coppie (chiave, valore) a caso con h = <b>${fnLabel()}</b>: guarda come si <b>distribuiscono</b> tra i ${M} bucket.`,
+      `✅ Fatto. Se la funzione è <b>uniforme</b> ogni bucket ha ~n/m elementi → costo medio Θ(n/m). Ora prova <b>Cerca</b> o <b>Cancella</b>.`);
+  }
+
+  function worstDemo(){
+    table = emptyTable(M);
+    const pairs = [];
+    const used = new Set();
+    let target = null;
+    if(fnMode === 'mod'){
+      target = ri(1, M-1);
+      for(let j=0; pairs.length<5; j++){
+        const key = String(target + M*j);
+        if(!used.has(key)){ used.add(key); pairs.push([key, nextVal()]); }
+      }
+    } else {
+      // generico (funziona anche con la funzione personalizzata):
+      // la prima chiave estratta fissa il bucket bersaglio, poi cerco altre chiavi che ci collidono
+      let attempts = 0;
+      while(pairs.length < 5 && attempts++ < 8000){
+        const key = randomKey();
+        if(used.has(key)) continue;
+        const h = hashOf(key);
+        if(target === null) target = h;
+        if(h !== target) continue;
+        used.add(key);
+        pairs.push([key, nextVal()]);
+      }
+      if(pairs.length < 5){
+        frames = []; curOp = null;
+        render({snap:snap(), move:null, cmp:[], bucket:null, op:null, pc:null,
+          msg:`Non riesco a trovare 5 chiavi che collidono con questa funzione: distribuisce troppo bene! 😄 (Il che, per una funzione di hash, è un complimento.)`});
+        return;
+      }
+    }
+    bulkInsert(pairs,
+      `⚠️ Inserisco 5 chiavi <b>che collidono tutte</b>: h(k) = <b>${target}</b> per ognuna. Osserva il bucket ${target}…`,
+      `📉 Ecco il <b>caso pessimo</b>: tutte le chiavi in un solo bucket → la tabella degenera in una <b>lista</b> e insert/search/delete costano <b>Θ(n)</b>. Per questo la funzione deve essere <b>uniforme</b> (2ª buona proprietà)!`);
+  }
+
+  const ri = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+
+  // ---- layout ----
+  const ROWH = 52, TOP = 14, HEADW = 96, NODEW = 84, NODEH = 36;
+  function computeLayout(snapshot){
+    const m = snapshot.m;
+    const H = TOP + m*ROWH + 10;
+    const maxChain = Math.max(1, ...snapshot.buckets.map(b=>b.length));
+    const step = Math.min(NODEW + 22, (900 - HEADW - 60) / maxChain);
+    const positions = new Map();
+    snapshot.buckets.forEach((list, b)=>{
+      const y = TOP + b*ROWH + ROWH/2;
+      positions.set('h'+b, {x: HEADW - 26, y});
+      list.forEach((o, j)=>{
+        positions.set(o.id, {x: HEADW + 34 + j*step + NODEW/2, y});
+      });
+    });
+    return {positions, H};
+  }
+
+  function renderBucketHeads(m){
+    if(renderedM === m) return;
+    renderedM = m;
+    let out = '';
+    for(let b=0; b<m; b++){
+      const y = TOP + b*ROWH + ROWH/2;
+      out += `<rect x="12" y="${y-17}" width="${HEADW-38}" height="34" rx="8" fill="#f4efe1" stroke="#cfc8b4" stroke-width="1.5"/>`;
+      out += `<text x="${12+(HEADW-38)/2}" y="${y+5}" text-anchor="middle" font-size="14" font-weight="700" fill="#6b6248">[${b}]</text>`;
+    }
+    bucketsLayer.innerHTML = out;
+  }
+
+  // ---- pool DOM persistente + animazione (stesso motore di heap/bst visualizer) ----
+  const FADE_MS = reducedMotion ? 0 : 380;
+  function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+  function fadeProgress(bornAt, exitAt, now){
+    if(exitAt != null){
+      const t = FADE_MS === 0 ? 1 : Math.min(1, (now-exitAt)/FADE_MS);
+      return 1 - easeInOutCubic(t);
+    }
+    const t = FADE_MS === 0 ? 1 : Math.min(1, (now-bornAt)/FADE_MS);
+    return easeInOutCubic(t);
+  }
+
+  function ensureNodeEl(id){
+    let rec = nodeEls.get(id);
+    if(rec) return rec;
+    const g = document.createElementNS(NS,'g');
+    const rect = document.createElementNS(NS,'rect');
+    rect.setAttribute('x', -NODEW/2); rect.setAttribute('y', -NODEH/2);
+    rect.setAttribute('width', NODEW); rect.setAttribute('height', NODEH);
+    rect.setAttribute('rx', 8);
+    rect.setAttribute('filter','url(#softShadow)');
+    const tKey = document.createElementNS(NS,'text');
+    tKey.setAttribute('text-anchor','middle');
+    tKey.setAttribute('x','0'); tKey.setAttribute('y','-1');
+    tKey.setAttribute('font-size','13'); tKey.setAttribute('font-weight','700');
+    const tVal = document.createElementNS(NS,'text');
+    tVal.setAttribute('text-anchor','middle');
+    tVal.setAttribute('x','0'); tVal.setAttribute('y','13');
+    tVal.setAttribute('font-size','10');
+    g.appendChild(rect); g.appendChild(tKey); g.appendChild(tVal);
+    nodesLayer.appendChild(g);
+    rec = {g, rect, tKey, tVal, bornAt: performance.now(), exitAt: null};
+    nodeEls.set(id, rec);
+    return rec;
+  }
+  function ensureEdgeEl(childId){
+    let line = edgeEls.get(childId);
+    if(line) return line;
+    line = document.createElementNS(NS,'line');
+    line.setAttribute('stroke','#b0a583');
+    line.setAttribute('stroke-width','2');
+    line.setAttribute('marker-end','url(#arrHead)');
+    edgesLayer.appendChild(line);
+    line._bornAt = performance.now();
+    line._exitAt = null;
+    edgeEls.set(childId, line);
+    return line;
+  }
+
+  function tweenDuration(){
+    if(reducedMotion) return 0;
+    const speed = +$('#speed').value;
+    return Math.max(150, Math.min(420, speed*0.55));
+  }
+
+  // fallback setTimeout: i browser sospendono requestAnimationFrame quando il tab
+  // non è visibile; senza fallback l'animazione resterebbe congelata a metà.
+  function scheduleTick(cb){
+    let done = false;
+    const fire = (now)=>{ if(done) return; done = true; cb(now); };
+    const rafHandle = requestAnimationFrame(fire);
+    const timerHandle = setTimeout(()=>fire(performance.now()), 40);
+    return {rafHandle, timerHandle};
+  }
+  function cancelTick(handle){
+    if(!handle) return;
+    cancelAnimationFrame(handle.rafHandle);
+    clearTimeout(handle.timerHandle);
+  }
+
+  function animateTo(targetPos, edgeParent, enteringIds, exitingIds){
+    if(rafId){ cancelTick(rafId); rafId = null; }
+    const duration = tweenDuration();
+    const startTime = performance.now();
+    const startPos = new Map(curPos);
+    for(const id of enteringIds) startPos.set(id, targetPos.get(id));
+    const allIds = new Set([...startPos.keys(), ...targetPos.keys()]);
+
+    const now0 = performance.now();
+    for(const id of exitingIds){
+      const rec = nodeEls.get(id);
+      if(rec && rec.exitAt == null) rec.exitAt = now0;
+    }
+    const newEdgeKeys = new Set(edgeParent.keys());
+    for(const childId of newEdgeKeys) ensureEdgeEl(childId);
+    for(const [childId, line] of edgeEls){
+      if(!newEdgeKeys.has(childId) && line._exitAt == null) line._exitAt = now0;
+    }
+
+    function tick(now){
+      const t = duration === 0 ? 1 : Math.min(1, (now-startTime)/duration);
+      const e = easeInOutCubic(t);
+      const live = new Map();
+      for(const id of allIds){
+        const p0 = startPos.get(id) || targetPos.get(id);
+        const p1 = targetPos.get(id) || p0;
+        if(!p0 || !p1) continue;
+        const x = p0.x + (p1.x-p0.x)*e;
+        const y = p0.y + (p1.y-p0.y)*e;
+        live.set(id, {x,y});
+        const rec = nodeEls.get(id);
+        if(!rec) continue;
+        const fp = fadeProgress(rec.bornAt, rec.exitAt, now);
+        const scale = rec.exitAt != null ? (0.6+0.4*fp) : (0.5+0.5*fp);
+        rec.g.setAttribute('transform', `translate(${x},${y}) scale(${scale})`);
+        rec.g.style.opacity = fp;
+      }
+      for(const [childId, line] of edgeEls){
+        let parentId = edgeParent.has(childId) ? edgeParent.get(childId) : (line.dataset.parentId || null);
+        const childXY = live.get(childId);
+        const parentXY = parentId != null ? live.get(parentId) : null;
+        if(childXY && parentXY){
+          line.setAttribute('x1', parentXY.x + (parentId.startsWith('h') ? 14 : NODEW/2));
+          line.setAttribute('y1', parentXY.y);
+          line.setAttribute('x2', childXY.x - NODEW/2 - 3);
+          line.setAttribute('y2', childXY.y);
+          line.dataset.parentId = parentId;
+        }
+        line.style.opacity = fadeProgress(line._bornAt, line._exitAt, now);
+      }
+      for(const [id, rec] of nodeEls){
+        if(rec.exitAt != null && (now-rec.exitAt) >= FADE_MS){ rec.g.remove(); nodeEls.delete(id); curPos.delete(id); }
+      }
+      for(const [childId, line] of edgeEls){
+        if(line._exitAt != null && (now-line._exitAt) >= FADE_MS){ line.remove(); edgeEls.delete(childId); }
+      }
+      const pendingExit = [...nodeEls.values()].some(r=>r.exitAt!=null) || [...edgeEls.values()].some(l=>l._exitAt!=null);
+      if(t < 1 || pendingExit){
+        rafId = scheduleTick(tick);
+      } else {
+        for(const id of targetPos.keys()) curPos.set(id, targetPos.get(id));
+        rafId = null;
+      }
+    }
+    rafId = scheduleTick(tick);
+  }
+
+  function nodeStyle(frame, id){
+    let fill='var(--node)', stroke='var(--nodeb)', sw=1.5, tc='#2a2a2a', vc='#7a7156';
+    if(frame.cmp.includes(id)){ stroke='var(--cmp)'; sw=3; }
+    if(frame.ok && frame.ok.includes(id)){ fill='var(--ok)'; stroke='var(--okb)'; tc='#fff'; vc='#dff2e2'; }
+    if(frame.delMark === id){ fill='var(--del)'; stroke='#c62828'; tc='#fff'; vc='#ffdcdc'; }
+    if(frame.move === id){ fill='var(--move)'; stroke='var(--moveb)'; tc='#fff'; vc='#ffe8d2'; }
+    return {fill, stroke, sw, tc, vc};
+  }
+
+  function render(frame){
+    renderPseudo(frame.op, frame.pc);
+    updateComplexity(frame.snap);
+    $('#msg').innerHTML = frame.msg;
+    $('#counter').textContent = frames.length ? `passo ${fi+1}/${frames.length}` : '';
+
+    renderBucketHeads(frame.snap.m);
+    const {positions, H} = computeLayout(frame.snap);
+    svg.setAttribute('viewBox', `0 0 900 ${H}`);
+
+    // evidenzia riga del bucket attivo
+    if(frame.bucket != null){
+      rowhl.setAttribute('y', TOP + frame.bucket*ROWH + 2);
+      rowhl.setAttribute('height', ROWH - 4);
+      rowhl.setAttribute('opacity', '0.08');
+    } else {
+      rowhl.setAttribute('opacity', '0');
+    }
+
+    const allItems = frame.snap.buckets.flat();
+    const targetIds = new Set(allItems.map(o=>o.id));
+    for(const b of frame.snap.buckets.keys()) targetIds.add('h'+b);
+    const enteringIds = allItems.filter(o=>!curPos.has(o.id)).map(o=>o.id);
+    const exitingIds = [...curPos.keys()].filter(id=>!id.startsWith('h') && !targetIds.has(id));
+
+    for(const item of allItems){
+      const rec = ensureNodeEl(item.id);
+      const st = nodeStyle(frame, item.id);
+      rec.rect.setAttribute('fill', st.fill);
+      rec.rect.setAttribute('stroke', st.stroke);
+      rec.rect.setAttribute('stroke-width', st.sw);
+      rec.tKey.setAttribute('fill', st.tc);
+      rec.tKey.textContent = item.key;
+      rec.tVal.setAttribute('fill', st.vc);
+      rec.tVal.textContent = '"' + item.val + '"';
+    }
+
+    const edgeParent = new Map();
+    frame.snap.buckets.forEach((list, b)=>{
+      list.forEach((o, j)=>{
+        edgeParent.set(o.id, j === 0 ? 'h'+b : list[j-1].id);
+      });
+    });
+
+    animateTo(positions, edgeParent, enteringIds, exitingIds);
+  }
+
+  // ---- player ----
+  function updatePlayBtn(){ $('#playPause').textContent = timer ? '⏸ Pausa' : '▶ Play'; }
+  function startTimer(){
+    if(timer) clearInterval(timer);
+    timer = setInterval(()=>{
+      if(fi < frames.length-1){ fi++; render(frames[fi]); }
+      else { clearInterval(timer); timer=null; updatePlayBtn(); }
+    }, +$('#speed').value);
+    updatePlayBtn();
+  }
+  function play(){
+    if(timer){ clearInterval(timer); timer=null; }
+    fi = 0;
+    if(!frames.length) return;
+    render(frames[0]);
+    startTimer();
+  }
+  function stop(){ if(timer){ clearInterval(timer); timer=null; } updatePlayBtn(); }
+  function togglePlay(){
+    if(timer){ stop(); return; }
+    if(!frames.length) return;
+    if(fi >= frames.length-1){ fi = 0; render(frames[0]); }
+    startTimer();
+  }
+  function step(d){
+    stop();
+    if(!frames.length) return;
+    fi = Math.max(0, Math.min(frames.length-1, fi+d));
+    render(frames[fi]);
+  }
+
+  // ---- eventi ----
+  function readKey(){
+    const k = validKey($('#key').value);
+    if(k === null){
+      $('#msg').innerHTML = usesDigits()
+        ? 'Chiave non valida: servono esattamente <b>4 cifre</b> (es. <b>3751</b>) perché la funzione usa le cifre a b c d.'
+        : 'Chiave non valida: serve un numero intero (es. <b>38</b>).';
+      return null;
+    }
+    return k;
+  }
+  $('#ins').addEventListener('click', ()=>{
+    const k = readKey(); if(k===null) return;
+    const v = $('#val').value.trim() || nextVal();
+    insertOp(k, v);
+    $('#key').value=''; $('#val').value=''; $('#key').focus();
+  });
+  $('#search').addEventListener('click', ()=>{
+    const k = readKey(); if(k===null) return;
+    searchOp(k);
+  });
+  $('#del').addEventListener('click', ()=>{
+    const k = readKey(); if(k===null) return;
+    deleteOp(k);
+    $('#key').value=''; $('#key').focus();
+  });
+  $('#key').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#ins').click(); });
+  $('#val').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#ins').click(); });
+  $('#rand').addEventListener('click', randomFill);
+  $('#worst').addEventListener('click', worstDemo);
+  $('#reset').addEventListener('click', ()=>{
+    table = emptyTable(M); frames=[]; curOp=null;
+    render({snap:snap(), move:null, cmp:[], bucket:null, msg:'Reset fatto. Tabella vuota.', op:null, pc:null});
+  });
+
+  function refreshKeyPlaceholder(){
+    $('#key').placeholder = usesDigits() ? 'es. 3751' : 'es. 38';
+  }
+  $('#fnSeg').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    fnMode = b.dataset.f;
+    [...$('#fnSeg').children].forEach(x=>x.classList.toggle('active', x===b));
+    $('#customBox').style.display = fnMode==='custom' ? 'flex' : 'none';
+    refreshKeyPlaceholder();
+    table = emptyTable(M); frames=[]; curOp=null;
+    const msgs = {
+      mod: 'Funzione <b>h = k mod M</b>: il resto della divisione per M dà l\'indice. Chiavi = numeri interi.',
+      exam: 'Funzione <b>h = (a·b + c·d) mod M</b> come all\'esame: chiavi di <b>4 cifre</b> a b c d. Es. h(3751) = (3·7 + 5·1) mod 7 = 26 mod 7 = 5.',
+      custom: `Modalità <b>personalizzata</b>: scrivi la tua espressione nella casella e premi <b>Applica</b>. Variabili: <b>a b c d</b> = le 4 cifre della chiave, <b>k</b> = la chiave intera. Attuale: h = <b>${fnLabel()}</b>.`
+    };
+    render({snap:snap(), move:null, cmp:[], bucket:null, op:null, pc:null, msg: msgs[fnMode]});
+    if(fnMode==='custom') $('#fnInput').focus();
+  });
+  $('#fnApply').addEventListener('click', ()=>{
+    const res = compileCustom($('#fnInput').value);
+    if(res.err){ $('#msg').innerHTML = '❌ ' + res.err; return; }
+    customFn = res.fn; customExpr = res.pretty; customUsesDigits = res.usesDigits;
+    refreshKeyPlaceholder();
+    table = emptyTable(M); frames=[]; curOp=null;
+    render({snap:snap(), move:null, cmp:[], bucket:null, op:null, pc:null,
+      msg:`✅ Funzione applicata: <b>h = ${fnLabel()}</b>. Chiavi: ${customUsesDigits ? '<b>4 cifre</b> (usa le variabili a b c d)' : '<b>numeri interi</b> (usa la variabile k)'}. Tabella azzerata: inserisci qualche chiave!`});
+  });
+  $('#fnInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#fnApply').click(); });
+  function setM(newM){
+    M = newM;
+    [...$('#mSeg').children].forEach(x=>x.classList.toggle('active', +x.dataset.m === M));
+    table = emptyTable(M); frames=[]; curOp=null;
+    render({snap:snap(), move:null, cmp:[], bucket:null, op:null, pc:null,
+      msg:`Tabella con <b>M = ${M}</b> bucket (indici 0–${M-1}). Ricorda: mod ${M} dà sempre un risultato tra 0 e ${M-1}!`});
+  }
+  $('#mSeg').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    $('#mInput').value = '';
+    setM(+b.dataset.m);
+  });
+  $('#mApply').addEventListener('click', ()=>{
+    const v = parseInt($('#mInput').value, 10);
+    if(Number.isNaN(v) || v < 2 || v > 15){
+      $('#msg').innerHTML = '❌ M non valido: scrivi un intero tra <b>2</b> e <b>15</b> (oltre, la tabella non starebbe nel disegno).';
+      return;
+    }
+    setM(v);
+  });
+  $('#mInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#mApply').click(); });
+
+  $('#next').addEventListener('click', ()=>step(1));
+  $('#prev').addEventListener('click', ()=>step(-1));
+  $('#playPause').addEventListener('click', togglePlay);
+
+  document.addEventListener('keydown', e=>{
+    const tag = document.activeElement.tagName;
+    if(tag==='INPUT' || tag==='TEXTAREA') return;
+    if(e.code==='Space'){ e.preventDefault(); togglePlay(); }
+    else if(e.key==='ArrowRight'){ e.preventDefault(); step(1); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); step(-1); }
+  });
+
+  // start
+  render({snap:snap(), move:null, cmp:[], bucket:null, op:null, pc:null,
+    msg:'La funzione di hash trasforma la chiave in un indice tra 0 e M−1. Inserisci qualche chiave, oppure prova 🎲 o 📉.'});
+})();
+</script>
+</body>
+</html>

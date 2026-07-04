@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BST Visualizer — insert, search, delete & visite</title>
+<style>
+  :root{
+    --bg:#fbf9f0; --ink:#2a2a2a; --node:#e9e4d0; --nodeb:#b8ad86;
+    --move:#ff8c3b; --moveb:#d9670f; --cmp:#3b9bff; --del:#ff5252;
+    --ok:#31a354; --okb:#1e7e34; --panel:#fff; --build:#7c4dff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);padding:16px;}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#777;font-size:13px;margin:0 0 14px}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+       background:var(--panel);border:1px solid #e6e0cf;border-radius:12px;padding:12px;margin-bottom:12px}
+  .bar label{font-size:13px}
+  input[type=number],input[type=text]{padding:7px 9px;border:1px solid #cfc8b4;border-radius:8px;font-size:15px}
+  input[type=number]{width:80px}
+  input[type=text]{width:180px}
+  button{padding:8px 12px;border:0;border-radius:9px;font-size:14px;cursor:pointer;background:#eee;color:#222}
+  button:hover{filter:brightness(.96)}
+  button:focus-visible{outline:2px solid var(--cmp);outline-offset:2px}
+  .b-primary{background:#3b9bff;color:#fff}
+  .b-del{background:#ff5252;color:#fff}
+  .b-ok{background:#31a354;color:#fff}
+  .b-build{background:var(--build);color:#fff}
+  .b-ghost{background:#efeadb}
+  .b-warn{background:#ffe08a}
+  .seg{display:inline-flex;border:1px solid #cfc8b4;border-radius:9px;overflow:hidden}
+  .seg button{background:#f4efe1;border-radius:0;margin:0}
+  .seg button.active{background:#2a2a2a;color:#fff}
+  .stage{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+  @media (min-width: 880px){
+    .stage{grid-template-columns:3fr 2fr}
+  }
+  .card{background:var(--panel);border:1px solid #e6e0cf;border-radius:12px;padding:12px;min-width:0}
+  svg{width:100%;height:auto;display:block}
+  .striplabel{font-size:12px;color:#888;margin-top:14px}
+  .arr{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}
+  .cell{min-width:40px;text-align:center;border:1px solid var(--nodeb);border-radius:8px;background:var(--node);
+        padding:6px 4px;font-weight:600;position:relative;transition:background .2s,border-color .2s}
+  .cell small{position:absolute;top:-16px;left:0;right:0;color:#999;font-weight:400;font-size:11px}
+  .msg{font-size:15px;min-height:44px;line-height:1.35;background:#fff8e8;border:1px solid #f0e2b8;border-radius:10px;padding:10px 12px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#555;margin-top:8px}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:5px;border:2px solid #999}
+  .foot{font-size:12px;color:#888;margin-top:10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  #pseudo{background:#faf8ef;border:1px solid #eee2c8;border-radius:8px;padding:8px 10px;margin-bottom:10px;overflow-x:auto}
+  .pline{padding:2px 6px;border-radius:4px;white-space:pre;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+         font-size:12.5px;color:#666;line-height:1.6}
+  .pline.active{background:#eaf3ff;color:#0b5fd7;font-weight:700;box-shadow:inset 3px 0 0 var(--cmp)}
+  #complexity{font-size:12px;color:#666;margin:2px 0 10px}
+  #complexity.degen{color:#c62828;font-weight:600}
+</style>
+</head>
+<body>
+  <h1>BST Visualizer — insert, search, delete & visite</h1>
+  <p class="sub">L'albero binario di ricerca: <b>sinistra = più piccolo, destra = più grande</b>. Guarda come ogni operazione segue <b>un solo ramo</b> (costo O(h)), i <b>tre casi della cancellazione</b> e perché la visita <b>in-order restituisce i valori ordinati</b>.</p>
+
+  <div class="bar">
+    <label>Valore:</label>
+    <input type="number" id="val" placeholder="es. 42">
+    <button class="b-primary" id="ins">➕ Inserisci</button>
+    <button class="b-ok" id="search">🔍 Cerca</button>
+    <button class="b-del" id="del">➖ Cancella</button>
+    <span style="width:14px"></span>
+    <button class="b-ghost" id="rand">🎲 Riempi a caso</button>
+    <button class="b-warn" id="degen">📉 Demo albero degenere</button>
+    <button class="b-ghost" id="reset">↺ Reset</button>
+  </div>
+
+  <div class="bar">
+    <label>Costruisci da sequenza:</label>
+    <input type="text" id="buildInput" placeholder="es. 50,30,70,20,40">
+    <button class="b-build" id="buildBtn">🏗️ Inserisci in ordine</button>
+    <span style="width:14px"></span>
+    <label>Visite:</label>
+    <button class="b-ghost" id="tin">In-order</button>
+    <button class="b-ghost" id="tpre">Pre-order</button>
+    <button class="b-ghost" id="tpost">Post-order</button>
+  </div>
+
+  <div class="bar">
+    <label>Cancellazione con 2 figli — sostituisco con:</label>
+    <div class="seg" id="delModeSeg">
+      <button data-m="succ" class="active">successore (min del sottoalbero destro)</button>
+      <button data-m="pred">predecessore (max del sottoalbero sinistro)</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="card">
+      <svg id="tree" viewBox="0 0 900 260" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="1.5" stdDeviation="1.4" flood-color="#000" flood-opacity="0.18"/>
+          </filter>
+        </defs>
+        <g id="edgesLayer"></g>
+        <g id="nodesLayer"></g>
+        <text id="emptyLabel" x="450" y="130" text-anchor="middle" fill="#bbb" font-size="18" style="opacity:1">(albero vuoto)</text>
+      </svg>
+      <div class="striplabel" id="stripLabel"></div>
+      <div class="arr" id="arr"></div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--move);border-color:var(--moveb)"></span>nodo corrente / appena inserito</span>
+        <span><span class="dot" style="background:#fff;border-color:var(--cmp)"></span>confronto in corso</span>
+        <span><span class="dot" style="background:var(--del);border-color:#c62828"></span>nodo da cancellare</span>
+        <span><span class="dot" style="background:var(--ok);border-color:var(--okb)"></span>trovato / visitato</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <button class="b-ghost" id="prev">⏮ Indietro</button>
+        <button class="b-ghost" id="playPause">▶ Play</button>
+        <button class="b-ghost" id="next">⏭ Avanti</button>
+        <span id="counter" style="font-size:12px;color:#888"></span>
+        <span style="flex:1"></span>
+        <label style="font-size:12px;color:#666">velocità</label>
+        <input type="range" id="speed" min="250" max="1600" value="850" step="50">
+      </div>
+      <div id="pseudo"></div>
+      <div id="complexity">Complessità: —</div>
+      <div class="msg" id="msg">Inserisci qualche numero e guarda dove finisce, poi prova <b>Cerca</b> e <b>Cancella</b>.</div>
+      <div class="foot">Scorciatoie: <b>spazio</b> = play/pausa, <b>← →</b> = passo indietro/avanti. Prova <b>📉 Demo albero degenere</b> per capire perché il costo è O(h) e non O(log n) garantito.</div>
+    </div>
+  </div>
+  <div class="foot">-kiki</div>
+
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const svg = $('#tree');
+  const edgesLayer = $('#edgesLayer');
+  const nodesLayer = $('#nodesLayer');
+  const emptyLabel = $('#emptyLabel');
+  const NS = 'http://www.w3.org/2000/svg';
+
+  const reducedMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  let root = null;        // nodo: {id, val, left, right}
+  let nodeId = 0;
+  let frames = [];
+  let fi = 0;
+  let timer = null;
+  let curOp = null;       // 'insert' | 'search' | 'delete' | 'in' | 'pre' | 'post' | null
+
+  let nodeEls = new Map();
+  let edgeEls = new Map();
+  let curPos = new Map();
+  let rafId = null;
+
+  // ---- snapshot dell'albero (per i fotogrammi) ----
+  function snap(){
+    const nodes = [];
+    (function walk(n){
+      if(!n) return;
+      nodes.push({id:n.id, val:n.val, left:n.left?n.left.id:null, right:n.right?n.right.id:null});
+      walk(n.left); walk(n.right);
+    })(root);
+    return {nodes, rootId: root ? root.id : null};
+  }
+
+  function note(pc, moveId, cmpIds, msg, extra){
+    frames.push(Object.assign({
+      snap: snap(),
+      move: (moveId==null ? null : moveId),
+      cmp: cmpIds || [],
+      msg, op: curOp, pc
+    }, extra || {}));
+  }
+
+  // ---- pseudocodice sincronizzato ----
+  const PSEUDO = {
+    idle: [
+      "In attesa di un'operazione…",
+      'Inserisci, cerca o cancella un valore,',
+      'oppure lancia una visita.'
+    ],
+    insert: [
+      'procedure INSERT(v)',
+      '  if root = null: root ← nuovo nodo(v); return',
+      '  x ← root',
+      '  loop:',
+      '    if v = x.val: return        // duplicato',
+      '    if v < x.val:',
+      '      if x.left = null: x.left ← nuovo nodo(v); return',
+      '      x ← x.left',
+      '    else:',
+      '      if x.right = null: x.right ← nuovo nodo(v); return',
+      '      x ← x.right'
+    ],
+    search: [
+      'procedure SEARCH(v)',
+      '  x ← root',
+      '  while x ≠ null:',
+      '    if v = x.val: return x      // trovato ✅',
+      '    if v < x.val: x ← x.left    // scarto tutto il ramo destro',
+      '    else: x ← x.right           // scarto tutto il ramo sinistro',
+      '  return null                   // non trovato ❌'
+    ],
+    delete_succ: [
+      'procedure DELETE(v)',
+      '  x ← cerca v (come SEARCH)',
+      '  if x = null: return',
+      '  if x è foglia:                       // CASO 1',
+      '    stacca x dal padre',
+      '  else if x ha un solo figlio:         // CASO 2',
+      '    collega quel figlio al padre di x',
+      '  else:                                // CASO 3: due figli',
+      '    s ← minimo del sottoalbero destro  // SUCCESSORE',
+      '    x.val ← s.val                      // copio il valore',
+      '    elimina s (ha al più un figlio destro)'
+    ],
+    delete_pred: [
+      'procedure DELETE(v)',
+      '  x ← cerca v (come SEARCH)',
+      '  if x = null: return',
+      '  if x è foglia:                       // CASO 1',
+      '    stacca x dal padre',
+      '  else if x ha un solo figlio:         // CASO 2',
+      '    collega quel figlio al padre di x',
+      '  else:                                // CASO 3: due figli',
+      '    p ← massimo del sottoalbero sinistro // PREDECESSORE',
+      '    x.val ← p.val                      // copio il valore',
+      '    elimina p (ha al più un figlio sinistro)'
+    ],
+    in: [
+      'procedure INORDER(x)',
+      '  if x = null: return',
+      '  INORDER(x.left)    // prima TUTTO il sottoalbero sinistro',
+      '  visita(x)          // poi il nodo',
+      '  INORDER(x.right)   // infine il sottoalbero destro'
+    ],
+    pre: [
+      'procedure PREORDER(x)',
+      '  if x = null: return',
+      '  visita(x)          // prima il nodo (utile per copiare l\'albero)',
+      '  PREORDER(x.left)',
+      '  PREORDER(x.right)'
+    ],
+    post: [
+      'procedure POSTORDER(x)',
+      '  if x = null: return',
+      '  POSTORDER(x.left)',
+      '  POSTORDER(x.right)',
+      '  visita(x)          // il nodo per ultimo (utile per deallocare)'
+    ]
+  };
+  let lastOp;
+  function renderPseudo(op, pc){
+    const box = $('#pseudo');
+    const key = op || 'idle';
+    if(key !== lastOp){
+      lastOp = key;
+      box.innerHTML = '';
+      (PSEUDO[key]||[]).forEach((line, idx)=>{
+        const d = document.createElement('div');
+        d.className = 'pline';
+        d.dataset.i = idx;
+        d.textContent = line;
+        box.appendChild(d);
+      });
+    }
+    [...box.children].forEach(el=>{
+      el.classList.toggle('active', pc!=null && Number(el.dataset.i)===pc);
+    });
+  }
+
+  const COMPLEXITY = {
+    idle: '—',
+    insert: 'O(h)', search: 'O(h)', delete_succ: 'O(h)', delete_pred: 'O(h)',
+    in: 'O(n): visita ogni nodo una volta', pre: 'O(n): visita ogni nodo una volta', post: 'O(n): visita ogni nodo una volta'
+  };
+  function updateComplexity(op, n, h){
+    const el = $('#complexity');
+    let txt = 'Complessità: ' + COMPLEXITY[op || 'idle'];
+    let degen = false;
+    if(n > 0){
+      txt += ` — albero: n=${n}, h=${h}`;
+      if(n >= 3 && h === n){ txt += ' ⚠️ DEGENERE: è una lista, le operazioni O(h) costano O(n)!'; degen = true; }
+      else if(op && op!=='idle' && !['in','pre','post'].includes(op)) txt += ` (se bilanciato, h ≈ log₂n ≈ ${Math.max(1, Math.ceil(Math.log2(n+1)))})`;
+    }
+    el.textContent = txt;
+    el.classList.toggle('degen', degen);
+  }
+
+  // ---- operazioni ----
+  function newNode(v){ return {id:nodeId++, val:v, left:null, right:null}; }
+
+  // compact=true (per le costruzioni multiple) salta i fotogrammi di puro confronto
+  function insertRec(v, compact){
+    if(!root){
+      root = newNode(v);
+      note(1, root.id, [], `L'albero è vuoto: <b>${v}</b> diventa la <b>radice</b>.`);
+      return;
+    }
+    let x = root;
+    while(true){
+      if(!compact) note(3, null, [x.id], `Confronto <b>${v}</b> con <b>${x.val}</b>.`);
+      if(v === x.val){
+        note(4, x.id, [], `<b>${v}</b> è già presente: questo BST non ammette duplicati → non inserito. ⚠️`);
+        return;
+      }
+      if(v < x.val){
+        if(!x.left){
+          x.left = newNode(v);
+          note(6, x.left.id, [x.id], `${v} < ${x.val} e il posto a sinistra è libero → <b>${v}</b> diventa figlio <b>sinistro</b> di ${x.val}. ✅`);
+          return;
+        }
+        note(7, null, [x.id, x.left.id], `${v} < ${x.val} → scendo a <b>sinistra</b>.`);
+        x = x.left;
+      } else {
+        if(!x.right){
+          x.right = newNode(v);
+          note(9, x.right.id, [x.id], `${v} > ${x.val} e il posto a destra è libero → <b>${v}</b> diventa figlio <b>destro</b> di ${x.val}. ✅`);
+          return;
+        }
+        note(10, null, [x.id, x.right.id], `${v} > ${x.val} → scendo a <b>destra</b>.`);
+        x = x.right;
+      }
+    }
+  }
+
+  function insert(v){
+    frames = []; curOp = 'insert';
+    insertRec(v, false);
+    play();
+  }
+
+  function buildSequence(values, introMsg, outroMsg){
+    frames = []; curOp = 'insert';
+    root = null;
+    note(null, null, [], introMsg);
+    for(const v of values) insertRec(v, true);
+    note(null, null, [], outroMsg);
+    play();
+  }
+
+  function searchVal(v){
+    frames = []; curOp = 'search';
+    if(!root){ note(6, null, [], 'Albero vuoto: non posso trovare niente. ❌'); play(); return; }
+    let x = root, steps = 0;
+    while(x){
+      steps++;
+      if(v === x.val){
+        note(3, x.id, [x.id], `<b>${v}</b> = ${x.val} → <b>TROVATO</b>! ✅ Ho fatto solo <b>${steps} confronti</b> seguendo un unico ramo.`, {ok:[x.id]});
+        play(); return;
+      }
+      const goLeft = v < x.val;
+      note(goLeft?4:5, null, [x.id], `${v} ${goLeft?'&lt;':'&gt;'} ${x.val} → vado a <b>${goLeft?'sinistra':'destra'}</b>: tutto il sottoalbero ${goLeft?'destro':'sinistro'} è <b>scartato</b> senza guardarlo.`);
+      x = goLeft ? x.left : x.right;
+    }
+    note(6, null, [], `Sono arrivato a un nodo nullo: <b>${v}</b> non c'è. ❌ (${steps} confronti, non n: il vantaggio del BST!)`);
+    play();
+  }
+
+  function replaceChild(parent, node, repl){
+    if(!parent) root = repl;
+    else if(parent.left === node) parent.left = repl;
+    else parent.right = repl;
+  }
+
+  let delMode = 'succ'; // 'succ' = min del sottoalbero destro | 'pred' = max del sottoalbero sinistro
+
+  function deleteVal(v){
+    frames = []; curOp = 'delete_' + delMode;
+    if(!root){ note(2, null, [], 'Albero vuoto: niente da cancellare.'); play(); return; }
+    // fase di ricerca
+    let x = root, parent = null;
+    while(x && x.val !== v){
+      const goLeft = v < x.val;
+      note(1, null, [x.id], `Cerco <b>${v}</b>: ${v} ${goLeft?'&lt;':'&gt;'} ${x.val} → vado a <b>${goLeft?'sinistra':'destra'}</b>.`);
+      parent = x;
+      x = goLeft ? x.left : x.right;
+    }
+    if(!x){
+      note(2, null, [], `<b>${v}</b> non è nell'albero: niente da cancellare. ❌`);
+      play(); return;
+    }
+    note(1, null, [x.id], `Trovato <b>${v}</b>. Ora guardo <b>quanti figli ha</b> per capire in quale caso siamo.`, {delMark:x.id});
+
+    if(!x.left && !x.right){
+      // CASO 1: foglia
+      note(3, null, [], `<b>${v}</b> è una <b>foglia</b> (nessun figlio) → <b>CASO 1</b>: posso staccarla senza rompere niente.`, {delMark:x.id});
+      replaceChild(parent, x, null);
+      note(4, null, [], `Foglia rimossa. L'albero resta un BST valido. ✅`);
+    } else if(!x.left || !x.right){
+      // CASO 2: un solo figlio
+      const child = x.left || x.right;
+      note(5, null, [child.id], `<b>${v}</b> ha <b>un solo figlio</b> (${child.val}) → <b>CASO 2</b>: "salto" il nodo collegando il figlio direttamente al padre.`, {delMark:x.id});
+      replaceChild(parent, x, child);
+      note(6, child.id, [], `<b>${child.val}</b> (con tutto il suo sottoalbero) ha preso il posto di ${v}. ✅`);
+    } else {
+      // CASO 3: due figli → successore (min del sottoalbero destro) o predecessore (max del sottoalbero sinistro)
+      const succ = delMode === 'succ';
+      const roleName = succ ? 'successore' : 'predecessore';
+      const subtree = succ ? 'destro' : 'sinistro';
+      note(7, null, [x.left.id, x.right.id], `<b>${v}</b> ha <b>due figli</b> → <b>CASO 3</b>: non posso staccarlo. Cerco il <b>${roleName}</b> = il ${succ?'minimo':'massimo'} del sottoalbero <b>${subtree}</b>.`, {delMark:x.id});
+      let sp = x, s = succ ? x.right : x.left;
+      note(8, null, [s.id], `Entro nel sottoalbero ${subtree} (<b>${s.val}</b>)…`, {delMark:x.id});
+      while(succ ? s.left : s.right){
+        sp = s; s = succ ? s.left : s.right;
+        note(8, null, [s.id], `…e scendo <b>tutto a ${succ?'sinistra':'destra'}</b>: <b>${s.val}</b>.`, {delMark:x.id});
+      }
+      note(8, null, [], `Il ${roleName} è <b>${s.val}</b>: il ${succ?'più piccolo valore maggiore':'più grande valore minore'} di ${v}. Per definizione non ha figlio ${succ?'sinistro':'destro'}!`, {delMark:x.id, ok:[s.id]});
+      const oldVal = x.val;
+      x.val = s.val;
+      note(9, x.id, [], `Copio <b>${s.val}</b> al posto di ${oldVal}: l'ordine del BST è rispettato. Ora c'è un duplicato in basso da eliminare.`, {ok:[x.id], delMark:s.id});
+      replaceChild(sp, s, succ ? s.right : s.left);
+      note(10, x.id, [], `Rimuovo il vecchio nodo del ${roleName} (aveva al più il figlio ${subtree}, quindi è un caso facile). L'albero è di nuovo un BST valido. ✅`);
+    }
+    play();
+  }
+
+  function traverse(order){
+    frames = []; curOp = order;
+    if(!root){ note(1, null, [], 'Albero vuoto: la visita non produce niente.'); play(); return; }
+    const names = {in:'in-order (sinistra → nodo → destra)', pre:'pre-order (nodo → sinistra → destra)', post:'post-order (sinistra → destra → nodo)'};
+    note(0, null, [], `Visita <b>${names[order]}</b>: parto dalla radice.`);
+    const out = [];
+    const visitPc = {in:3, pre:2, post:4};
+    function visit(node){
+      out.push({id:node.id, val:node.val});
+      note(visitPc[order], node.id, [], `Visito <b>${node.val}</b>. Output finora: <b>${out.map(o=>o.val).join(', ')}</b>`,
+           {ok: out.slice(0,-1).map(o=>o.id), out: out.slice()});
+    }
+    (function rec(node){
+      if(!node) return;
+      if(order==='pre') visit(node);
+      rec(node.left);
+      if(order==='in') visit(node);
+      rec(node.right);
+      if(order==='post') visit(node);
+    })(root);
+    const finale = order==='in'
+      ? `✅ Visita completata: <b>${out.map(o=>o.val).join(', ')}</b> — nota che l'output è <b>ORDINATO</b>! È la proprietà fondamentale del BST: in-order = ordinamento crescente.`
+      : `✅ Visita completata: <b>${out.map(o=>o.val).join(', ')}</b>.`;
+    note(null, null, [], finale, {ok: out.map(o=>o.id), out: out.slice()});
+    play();
+  }
+
+  // ---- layout albero: x = posizione in-order, y = profondità ----
+  function computeLayout(snapshot){
+    const byId = new Map(snapshot.nodes.map(nd=>[nd.id, nd]));
+    const n = snapshot.nodes.length;
+    const seq = []; let maxDepth = 0;
+    (function walk(id, depth){
+      if(id==null) return;
+      const nd = byId.get(id);
+      walk(nd.left, depth+1);
+      nd._depth = depth; maxDepth = Math.max(maxDepth, depth);
+      seq.push(nd);
+      walk(nd.right, depth+1);
+    })(snapshot.rootId, 0);
+    // livelli più compatti per alberi profondi (es. degeneri), così l'SVG non diventa altissimo
+    const W = 900, top = 40, levelH = maxDepth >= 7 ? 52 : 70;
+    const H = Math.max(220, top + maxDepth*levelH + 60);
+    const positions = new Map();
+    seq.forEach((nd, i)=>{
+      positions.set(nd.id, {x: (i+1)/(n+1)*W, y: top + nd._depth*levelH});
+    });
+    return {positions, H, inorderSeq: seq, height: n ? maxDepth+1 : 0};
+  }
+
+  // ---- pool di elementi DOM persistenti (per animare, non ridisegnare) ----
+  // Il fade in/out di ogni nodo/arco è guidato da un timestamp assoluto (bornAt/exitAt),
+  // non da un progresso relativo al singolo tween: così resta corretto anche se il
+  // browser rallenta/salta requestAnimationFrame (tab in background, rendering lento),
+  // invece di restare bloccato a metà ogni volta che un nuovo passo interrompe il tween precedente.
+  const FADE_MS = reducedMotion ? 0 : 380;
+  function fadeProgress(bornAt, exitAt, now){
+    if(exitAt != null){
+      const t = FADE_MS === 0 ? 1 : Math.min(1, (now-exitAt)/FADE_MS);
+      return 1 - easeInOutCubic(t);
+    }
+    const t = FADE_MS === 0 ? 1 : Math.min(1, (now-bornAt)/FADE_MS);
+    return easeInOutCubic(t);
+  }
+
+  function ensureNodeEl(id){
+    let rec = nodeEls.get(id);
+    if(rec) return rec;
+    const g = document.createElementNS(NS,'g');
+    const circle = document.createElementNS(NS,'circle');
+    circle.setAttribute('r','21');
+    circle.setAttribute('cx','0'); circle.setAttribute('cy','0');
+    circle.setAttribute('filter','url(#softShadow)');
+    const text = document.createElementNS(NS,'text');
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('x','0'); text.setAttribute('y','5');
+    text.setAttribute('font-size','15');
+    text.setAttribute('font-weight','700');
+    g.appendChild(circle); g.appendChild(text);
+    nodesLayer.appendChild(g);
+    rec = {g, circle, text, bornAt: performance.now(), exitAt: null};
+    nodeEls.set(id, rec);
+    return rec;
+  }
+  function ensureEdgeEl(childId){
+    let line = edgeEls.get(childId);
+    if(line) return line;
+    line = document.createElementNS(NS,'line');
+    line.setAttribute('stroke','#c9c0a4');
+    line.setAttribute('stroke-width','2.2');
+    line.setAttribute('stroke-linecap','round');
+    edgesLayer.appendChild(line);
+    line._bornAt = performance.now();
+    line._exitAt = null;
+    edgeEls.set(childId, line);
+    return line;
+  }
+
+  function tweenDuration(){
+    if(reducedMotion) return 0;
+    const speed = +$('#speed').value;
+    return Math.max(150, Math.min(420, speed*0.55));
+  }
+  function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+
+  // requestAnimationFrame viene sospeso dai browser quando il tab non è visibile
+  // (cambio tab, finestra minimizzata): senza fallback l'animazione resterebbe
+  // bloccata a metà finché il tab non torna in primo piano. setTimeout garantisce
+  // che lo stato converga comunque a quello corretto, anche se non fluido.
+  function scheduleTick(cb){
+    let done = false;
+    const fire = (now)=>{ if(done) return; done = true; cb(now); };
+    const rafHandle = requestAnimationFrame(fire);
+    const timerHandle = setTimeout(()=>fire(performance.now()), 40);
+    return {rafHandle, timerHandle};
+  }
+  function cancelTick(handle){
+    if(!handle) return;
+    cancelAnimationFrame(handle.rafHandle);
+    clearTimeout(handle.timerHandle);
+  }
+
+  function animateTo(targetPos, edgeParent, enteringIds, exitingIds){
+    if(rafId){ cancelTick(rafId); rafId = null; }
+    const duration = tweenDuration();
+    const startTime = performance.now();
+    const startPos = new Map(curPos);
+    for(const id of enteringIds) startPos.set(id, targetPos.get(id));
+    const allIds = new Set([...startPos.keys(), ...targetPos.keys()]);
+
+    const now0 = performance.now();
+    for(const id of exitingIds){
+      const rec = nodeEls.get(id);
+      if(rec && rec.exitAt == null) rec.exitAt = now0;
+    }
+    const newEdgeKeys = new Set(edgeParent.keys());
+    for(const childId of newEdgeKeys) ensureEdgeEl(childId);
+    for(const [childId, line] of edgeEls){
+      if(!newEdgeKeys.has(childId) && line._exitAt == null) line._exitAt = now0;
+    }
+
+    function tick(now){
+      const t = duration === 0 ? 1 : Math.min(1, (now-startTime)/duration);
+      const e = easeInOutCubic(t);
+      const live = new Map();
+      for(const id of allIds){
+        const p0 = startPos.get(id) || targetPos.get(id);
+        const p1 = targetPos.get(id) || p0;
+        if(!p0 || !p1) continue;
+        const x = p0.x + (p1.x-p0.x)*e;
+        const y = p0.y + (p1.y-p0.y)*e;
+        live.set(id, {x,y});
+        const rec = nodeEls.get(id);
+        if(!rec) continue;
+        const fp = fadeProgress(rec.bornAt, rec.exitAt, now);
+        const scale = rec.exitAt != null ? (0.6+0.4*fp) : (0.35+0.65*fp);
+        rec.g.setAttribute('transform', `translate(${x},${y}) scale(${scale})`);
+        rec.g.style.opacity = fp;
+      }
+      for(const [childId, line] of edgeEls){
+        let parentId = edgeParent.has(childId) ? edgeParent.get(childId) : null;
+        if(parentId == null && line.dataset.parentId) parentId = Number(line.dataset.parentId);
+        const childXY = live.get(childId);
+        const parentXY = parentId != null ? live.get(parentId) : null;
+        if(childXY && parentXY){
+          line.setAttribute('x1', parentXY.x); line.setAttribute('y1', parentXY.y);
+          line.setAttribute('x2', childXY.x); line.setAttribute('y2', childXY.y);
+          if(parentId != null) line.dataset.parentId = parentId;
+        }
+        line.style.opacity = fadeProgress(line._bornAt, line._exitAt, now);
+      }
+      // rimozione definitiva dal DOM una volta completato il fade-out, indipendente dal tween di posizione
+      for(const [id, rec] of nodeEls){
+        if(rec.exitAt != null && (now-rec.exitAt) >= FADE_MS){ rec.g.remove(); nodeEls.delete(id); curPos.delete(id); }
+      }
+      for(const [childId, line] of edgeEls){
+        if(line._exitAt != null && (now-line._exitAt) >= FADE_MS){ line.remove(); edgeEls.delete(childId); }
+      }
+      const pendingExit = [...nodeEls.values()].some(r=>r.exitAt!=null) || [...edgeEls.values()].some(l=>l._exitAt!=null);
+      if(t < 1 || pendingExit){
+        rafId = scheduleTick(tick);
+      } else {
+        for(const id of targetPos.keys()) curPos.set(id, targetPos.get(id));
+        rafId = null;
+      }
+    }
+    rafId = scheduleTick(tick);
+  }
+
+  function nodeStyle(frame, id){
+    let fill='var(--node)', stroke='var(--nodeb)', sw=2, tc='#2a2a2a';
+    if(frame.cmp.includes(id)){ stroke='var(--cmp)'; sw=4; }
+    if(frame.ok && frame.ok.includes(id)){ fill='var(--ok)'; stroke='var(--okb)'; tc='#fff'; }
+    if(frame.delMark === id){ fill='var(--del)'; stroke='#c62828'; tc='#fff'; }
+    if(frame.move === id){ fill='var(--move)'; stroke='var(--moveb)'; tc='#fff'; }
+    return {fill, stroke, sw, tc};
+  }
+
+  function renderStrip(frame, inorderSeq){
+    let label, items;
+    if(frame.out){
+      label = 'output della visita:';
+      items = frame.out.map((o,i)=>({id:o.id, val:o.val, idx:i+1}));
+    } else {
+      label = inorderSeq.length ? 'sequenza in-order dell\'albero (sempre ordinata! 📈):' : '';
+      items = inorderSeq.map((nd,i)=>({id:nd.id, val:nd.val, idx:i}));
+    }
+    $('#stripLabel').textContent = label;
+    const cells = items.map(item=>{
+      const st = nodeStyle(frame, item.id);
+      let style = '';
+      if(st.fill !== 'var(--node)') style = `background:${st.fill};color:${st.tc};border-color:${st.stroke}`;
+      else if(frame.cmp.includes(item.id)) style = 'border-color:var(--cmp);border-width:2px';
+      return `<div class="cell" style="${style}"><small>${item.idx}</small>${item.val}</div>`;
+    }).join('');
+    $('#arr').innerHTML = cells || '<span style="color:#bbb">(vuoto)</span>';
+  }
+
+  function render(frame){
+    renderPseudo(frame.op, frame.pc);
+    $('#msg').innerHTML = frame.msg;
+    $('#counter').textContent = frames.length ? `passo ${fi+1}/${frames.length}` : '';
+
+    const {positions, H, inorderSeq, height} = computeLayout(frame.snap);
+    updateComplexity(frame.op, frame.snap.nodes.length, height);
+    renderStrip(frame, inorderSeq);
+    svg.setAttribute('viewBox', `0 0 900 ${H}`);
+    emptyLabel.style.opacity = frame.snap.nodes.length === 0 ? 1 : 0;
+
+    const targetIds = new Set(frame.snap.nodes.map(o=>o.id));
+    const enteringIds = [...targetIds].filter(id=>!curPos.has(id));
+    const exitingIds = [...curPos.keys()].filter(id=>!targetIds.has(id));
+
+    for(const item of frame.snap.nodes){
+      const rec = ensureNodeEl(item.id);
+      const st = nodeStyle(frame, item.id);
+      rec.circle.setAttribute('fill', st.fill);
+      rec.circle.setAttribute('stroke', st.stroke);
+      rec.circle.setAttribute('stroke-width', st.sw);
+      rec.text.setAttribute('fill', st.tc);
+      rec.text.textContent = item.val;
+    }
+
+    const edgeParent = new Map();
+    for(const nd of frame.snap.nodes){
+      if(nd.left != null) edgeParent.set(nd.left, nd.id);
+      if(nd.right != null) edgeParent.set(nd.right, nd.id);
+    }
+
+    animateTo(positions, edgeParent, enteringIds, exitingIds);
+  }
+
+  // ---- player ----
+  function updatePlayBtn(){ $('#playPause').textContent = timer ? '⏸ Pausa' : '▶ Play'; }
+  function startTimer(){
+    if(timer) clearInterval(timer);
+    timer = setInterval(()=>{
+      if(fi < frames.length-1){ fi++; render(frames[fi]); }
+      else { clearInterval(timer); timer=null; updatePlayBtn(); }
+    }, +$('#speed').value);
+    updatePlayBtn();
+  }
+  function play(){
+    if(timer){ clearInterval(timer); timer=null; }
+    fi = 0;
+    if(!frames.length) return;
+    render(frames[0]);
+    startTimer();
+  }
+  function stop(){ if(timer){ clearInterval(timer); timer=null; } updatePlayBtn(); }
+  function togglePlay(){
+    if(timer){ stop(); return; }
+    if(!frames.length) return;
+    if(fi >= frames.length-1){ fi = 0; render(frames[0]); }
+    startTimer();
+  }
+  function step(d){
+    stop();
+    if(!frames.length) return;
+    fi = Math.max(0, Math.min(frames.length-1, fi+d));
+    render(frames[fi]);
+  }
+
+  // ---- eventi ----
+  function readVal(){
+    const v = parseInt($('#val').value, 10);
+    if(Number.isNaN(v)){ $('#msg').innerHTML = 'Scrivi un numero nel campo "Valore".'; return null; }
+    return v;
+  }
+  $('#ins').addEventListener('click', ()=>{
+    const v = readVal(); if(v===null) return;
+    insert(v); $('#val').value=''; $('#val').focus();
+  });
+  $('#search').addEventListener('click', ()=>{
+    const v = readVal(); if(v===null) return;
+    searchVal(v);
+  });
+  $('#del').addEventListener('click', ()=>{
+    const v = readVal(); if(v===null) return;
+    deleteVal(v); $('#val').value=''; $('#val').focus();
+  });
+  $('#val').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#ins').click(); });
+  $('#reset').addEventListener('click', ()=>{
+    root=null; frames=[]; curOp=null;
+    render({snap:snap(), move:null, cmp:[], msg:'Reset fatto. Albero vuoto.', op:null, pc:null});
+  });
+  $('#rand').addEventListener('click', ()=>{
+    const pool = Array.from({length:49}, (_,i)=>i+1);
+    for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+    const k = 7 + Math.floor(Math.random()*3);
+    const values = pool.slice(0,k);
+    buildSequence(values,
+      `Inserisco ${k} valori a caso, uno alla volta: [${values.join(', ')}]. Guarda come la forma dipende dall'<b>ordine</b> di inserimento!`,
+      `✅ BST costruito con ${k} inserimenti. Ora prova <b>Cerca</b>, <b>Cancella</b> o una <b>visita in-order</b>.`);
+  });
+  $('#degen').addEventListener('click', ()=>{
+    const values = [10,20,30,40,50,60,70];
+    buildSequence(values,
+      `⚠️ Inserisco valori <b>già ordinati</b>: [${values.join(', ')}]. Osserva cosa succede alla forma dell'albero…`,
+      `📉 Ecco il problema: ogni nuovo valore è il più grande, va sempre a destra → l'albero è una <b>lista</b> con h = n. Cerca/inserisci/cancella costano <b>O(n)</b>, non O(log n)! Per questo esistono gli alberi <b>bilanciati</b> (AVL, Red-Black).`);
+  });
+  $('#buildBtn').addEventListener('click', ()=>{
+    const raw = $('#buildInput').value;
+    const seen = new Set();
+    const values = raw.split(/[,\s]+/).filter(Boolean).map(Number)
+      .filter(x=>!Number.isNaN(x) && !seen.has(x) && seen.add(x)).slice(0,15);
+    if(!values.length){ $('#msg').innerHTML = 'Scrivi un elenco di numeri separati da virgola, es. 50,30,70,20,40.'; return; }
+    buildSequence(values,
+      `Inserisco in ordine: [${values.join(', ')}]. La forma finale dipende da questo ordine!`,
+      `✅ BST costruito (${values.length} inserimenti, costo totale O(n·h)). Prova a reinserire gli stessi numeri in un ordine diverso: otterrai un albero diverso!`);
+    $('#buildInput').value='';
+  });
+  $('#delModeSeg').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    delMode = b.dataset.m;
+    [...$('#delModeSeg').children].forEach(x=>x.classList.toggle('active', x===b));
+    $('#msg').innerHTML = delMode==='succ'
+      ? `Modalità caso 3: sostituisco con il <b>successore</b> (minimo del sottoalbero <b>destro</b>: un passo a destra, poi tutto a sinistra).`
+      : `Modalità caso 3: sostituisco con il <b>predecessore</b> (massimo del sottoalbero <b>sinistro</b>: un passo a sinistra, poi tutto a destra). Entrambe le scelte sono corrette!`;
+  });
+  $('#tin').addEventListener('click', ()=>traverse('in'));
+  $('#tpre').addEventListener('click', ()=>traverse('pre'));
+  $('#tpost').addEventListener('click', ()=>traverse('post'));
+  $('#next').addEventListener('click', ()=>step(1));
+  $('#prev').addEventListener('click', ()=>step(-1));
+  $('#playPause').addEventListener('click', togglePlay);
+
+  document.addEventListener('keydown', e=>{
+    const tag = document.activeElement.tagName;
+    if(tag==='INPUT' || tag==='TEXTAREA') return;
+    if(e.code==='Space'){ e.preventDefault(); togglePlay(); }
+    else if(e.key==='ArrowRight'){ e.preventDefault(); step(1); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); step(-1); }
+  });
+
+  // start
+  render({snap:snap(), move:null, cmp:[], msg:"Regola del BST: <b>sinistra &lt; nodo &lt; destra</b>, ovunque. Inserisci qualche numero, oppure prova 🎲 o la demo 📉.", op:null, pc:null});
+})();
+</script>
+</body>
+</html>

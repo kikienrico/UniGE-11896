@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heap Visualizer — insert & delete (min/max)</title>
+<style>
+  :root{
+    --bg:#fbf9f0; --ink:#2a2a2a; --node:#e9e4d0; --nodeb:#b8ad86;
+    --move:#ff8c3b; --moveb:#d9670f; --cmp:#3b9bff; --del:#ff5252;
+    --ok:#31a354; --panel:#fff; --build:#7c4dff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);padding:16px;}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:#777;font-size:13px;margin:0 0 14px}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+       background:var(--panel);border:1px solid #e6e0cf;border-radius:12px;padding:12px;margin-bottom:12px}
+  .bar label{font-size:13px}
+  input[type=number],input[type=text]{padding:7px 9px;border:1px solid #cfc8b4;border-radius:8px;font-size:15px}
+  input[type=number]{width:80px}
+  input[type=text]{width:180px}
+  button{padding:8px 12px;border:0;border-radius:9px;font-size:14px;cursor:pointer;background:#eee;color:#222}
+  button:hover{filter:brightness(.96)}
+  button:focus-visible{outline:2px solid var(--cmp);outline-offset:2px}
+  .b-primary{background:#3b9bff;color:#fff}
+  .b-del{background:#ff5252;color:#fff}
+  .b-build{background:var(--build);color:#fff}
+  .b-ghost{background:#efeadb}
+  .seg{display:inline-flex;border:1px solid #cfc8b4;border-radius:9px;overflow:hidden}
+  .seg button{background:#f4efe1;border-radius:0;margin:0}
+  .seg button.active{background:#2a2a2a;color:#fff}
+  .stage{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+  @media (min-width: 880px){
+    .stage{grid-template-columns:3fr 2fr}
+  }
+  .card{background:var(--panel);border:1px solid #e6e0cf;border-radius:12px;padding:12px;min-width:0}
+  svg{width:100%;height:auto;display:block}
+  .arr{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .cell{min-width:40px;text-align:center;border:1px solid var(--nodeb);border-radius:8px;background:var(--node);
+        padding:6px 4px;font-weight:600;position:relative;transition:background .2s,border-color .2s}
+  .cell small{position:absolute;top:-16px;left:0;right:0;color:#999;font-weight:400;font-size:11px}
+  .msg{font-size:15px;min-height:44px;line-height:1.35;background:#fff8e8;border:1px solid #f0e2b8;border-radius:10px;padding:10px 12px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#555;margin-top:8px}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:5px;border:2px solid #999}
+  .foot{font-size:12px;color:#888;margin-top:10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  #pseudo{background:#faf8ef;border:1px solid #eee2c8;border-radius:8px;padding:8px 10px;margin-bottom:10px;overflow-x:auto}
+  .pline{padding:2px 6px;border-radius:4px;white-space:pre;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+         font-size:12.5px;color:#666;line-height:1.6}
+  .pline.active{background:#eaf3ff;color:#0b5fd7;font-weight:700;box-shadow:inset 3px 0 0 var(--cmp)}
+  #complexity{font-size:12px;color:#666;margin:2px 0 10px}
+</style>
+</head>
+<body>
+  <h1>Heap Visualizer — insert, delete & build</h1>
+  <p class="sub">Vedi <b>quando un nodo SALE</b> (dopo l'inserimento), <b>quando SCENDE</b> (dopo la cancellazione della radice) e <b>come si costruisce</b> un heap da un array, con animazioni fluide e pseudocodice sincronizzato passo-passo.</p>
+
+  <div class="bar">
+    <label>Tipo:</label>
+    <div class="seg" id="typeSeg">
+      <button data-t="min" class="active">Min-heap (radice = minimo)</button>
+      <button data-t="max">Max-heap (radice = massimo)</button>
+    </div>
+    <span style="width:14px"></span>
+    <label>Valore:</label>
+    <input type="number" id="val" placeholder="es. 7">
+    <button class="b-primary" id="ins">➕ Inserisci</button>
+    <button class="b-del" id="del">➖ Cancella radice</button>
+    <span style="width:14px"></span>
+    <button class="b-ghost" id="rand">🎲 Riempi a caso</button>
+    <button class="b-ghost" id="reset">↺ Reset</button>
+  </div>
+
+  <div class="bar">
+    <label>Costruisci heap da array:</label>
+    <input type="text" id="buildInput" placeholder="es. 9,4,7,1,5,2">
+    <button class="b-build" id="buildBtn">🏗️ Costruisci (build-heap O(n))</button>
+  </div>
+
+  <div class="stage">
+    <div class="card">
+      <svg id="tree" viewBox="0 0 900 260" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="1.5" stdDeviation="1.4" flood-color="#000" flood-opacity="0.18"/>
+          </filter>
+        </defs>
+        <g id="edgesLayer"></g>
+        <g id="nodesLayer"></g>
+        <text id="emptyLabel" x="450" y="130" text-anchor="middle" fill="#bbb" font-size="18" style="opacity:1">(heap vuoto)</text>
+      </svg>
+      <div class="arr" id="arr" style="margin-top:18px"></div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--move);border-color:var(--moveb)"></span>nodo che si muove (sale/scende)</span>
+        <span><span class="dot" style="background:#fff;border-color:var(--cmp)"></span>confronto in corso</span>
+        <span><span class="dot" style="background:var(--del);border-color:#c62828"></span>radice da cancellare</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <button class="b-ghost" id="prev">⏮ Indietro</button>
+        <button class="b-ghost" id="playPause">▶ Play</button>
+        <button class="b-ghost" id="next">⏭ Avanti</button>
+        <span id="counter" style="font-size:12px;color:#888"></span>
+        <span style="flex:1"></span>
+        <label style="font-size:12px;color:#666">velocità</label>
+        <input type="range" id="speed" min="250" max="1600" value="850" step="50">
+      </div>
+      <div id="pseudo"></div>
+      <div id="complexity">Complessità: —</div>
+      <div class="msg" id="msg">Scegli min/max, poi inserisci qualche numero e guarda l'albero. Prova poi "Cancella radice" o "Costruisci heap".</div>
+      <div class="foot">Scorciatoie: <b>spazio</b> = play/pausa, <b>← →</b> = passo indietro/avanti. Suggerimento: parti con <b>🎲 Riempi a caso</b>, poi <b>Cancella radice</b> e osserva la discesa.</div>
+    </div>
+  </div>
+  <div class="foot">-kiki</div>
+
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const svg = $('#tree');
+  const edgesLayer = $('#edgesLayer');
+  const nodesLayer = $('#nodesLayer');
+  const emptyLabel = $('#emptyLabel');
+  const NS = 'http://www.w3.org/2000/svg';
+
+  const reducedMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  let heap = [];          // array di {id, val}
+  let nodeId = 0;
+  let type = 'min';       // 'min' | 'max'
+  let frames = [];        // sequenza di stati per l'animazione
+  let fi = 0;
+  let timer = null;
+  let curOp = null;       // 'insert' | 'delete' | 'build' | null
+
+  let nodeEls = new Map();  // id -> {g, circle, text}
+  let edgeEls = new Map();  // childId -> <line>
+  let curPos = new Map();   // id -> {x,y} posizione corrente sullo schermo
+  let rafId = null;
+
+  // ---- proprietà heap ----
+  function violUp(child, parent){ return type==='min' ? child < parent : child > parent; }
+  function preferred(a, b){ return type==='min' ? a < b : a > b; }
+  const rootWord = () => type==='min' ? 'minimo' : 'massimo';
+  const cmpWord  = () => type==='min' ? 'più piccolo' : 'più grande';
+  const ruleWord = () => type==='min' ? 'ogni nodo deve essere ≤ dei figli' : 'ogni nodo deve essere ≥ dei figli';
+
+  // ---- pseudocodice sincronizzato ----
+  const PSEUDO = {
+    idle: [
+      "In attesa di un'operazione…",
+      'Inserisci un valore, cancella la radice,',
+      'oppure costruisci un heap da un array.'
+    ],
+    insert: [
+      'procedure INSERT(v)',
+      '  heap.append(v)',
+      '  i ← heap.length - 1',
+      '  while i > 0:',
+      '    p ← parent(i)',
+      '    if violates(heap[i], heap[p]):',
+      '      swap(heap[i], heap[p])',
+      '      i ← p',
+      '    else:',
+      '      break'
+    ],
+    delete: [
+      'procedure DELETE_ROOT()',
+      '  root ← heap[0]',
+      '  last ← heap.pop()',
+      '  if heap is empty: return root',
+      '  heap[0] ← last',
+      '  i ← 0',
+      '  while true:',
+      '    best ← index of preferred child/self',
+      '    if best ≠ i:',
+      '      swap(heap[i], heap[best]); i ← best',
+      '    else:',
+      '      break',
+      '  return root'
+    ],
+    build: [
+      'procedure BUILD_HEAP(A)',
+      '  heap ← A',
+      '  for i ← ⌊n/2⌋-1 down to 0:',
+      '    SIFT_DOWN(i)'
+    ]
+  };
+  let lastOp;
+  function renderPseudo(op, pc){
+    const box = $('#pseudo');
+    const key = op || 'idle';
+    if(key !== lastOp){
+      lastOp = key;
+      box.innerHTML = '';
+      (PSEUDO[key]||[]).forEach((line, idx)=>{
+        const d = document.createElement('div');
+        d.className = 'pline';
+        d.dataset.i = idx;
+        d.textContent = line;
+        box.appendChild(d);
+      });
+    }
+    [...box.children].forEach(el=>{
+      el.classList.toggle('active', pc!=null && Number(el.dataset.i)===pc);
+    });
+  }
+
+  const COMPLEXITY = {
+    idle: '—',
+    insert: 'O(log n) nel caso peggiore',
+    delete: 'O(log n) nel caso peggiore',
+    build: 'O(n) — più veloce di n inserimenti singoli, che sarebbero O(n log n)'
+  };
+  function updateComplexity(op){
+    $('#complexity').textContent = 'Complessità: ' + COMPLEXITY[op || 'idle'];
+  }
+
+  // ---- registrazione dei "fotogrammi" ----
+  function note(pc, moveId, cmpIds, msg, extra){
+    frames.push(Object.assign({
+      arr: heap.map(o=>({id:o.id, val:o.val})),
+      move: (moveId==null ? null : moveId),
+      cmp: cmpIds || [],
+      msg, op: curOp, pc
+    }, extra || {}));
+  }
+
+  // ---- operazioni ----
+  function insert(v){
+    frames = []; curOp = 'insert';
+    const id = nodeId++;
+    heap.push({id, val:v});
+    let i = heap.length - 1;
+    note(1, heap[i].id, [], `Inserisco <b>${v}</b> in fondo all'array (ultima foglia dell'albero).`);
+    if(heap.length === 1){
+      note(1, heap[0].id, [], `<b>${v}</b> è il primo elemento → diventa la radice.`);
+    } else {
+      while(i > 0){
+        const p = (i - 1) >> 1;
+        note(5, heap[i].id, [heap[i].id, heap[p].id], `Confronto <b>${heap[i].val}</b> con il padre <b>${heap[p].val}</b>.`);
+        if(violUp(heap[i].val, heap[p].val)){
+          const movedVal = heap[i].val;
+          [heap[i], heap[p]] = [heap[p], heap[i]];
+          note(6, heap[p].id, [], `<b>${movedVal}</b> è ${cmpWord()} del padre → in un <b>${type}-heap</b> ${ruleWord()}, quindi <b>SWAP</b>: ${movedVal} <b>SALE</b> ⬆️.`);
+          i = p;
+        } else {
+          note(9, heap[i].id, [], `<b>${heap[i].val}</b> rispetta la proprietà rispetto al padre <b>${heap[p].val}</b> → si ferma qui. ✅`);
+          break;
+        }
+      }
+    }
+    note(null, null, [], `✅ Inserimento completato: <b>${v}</b> è ora in posizione corretta.`);
+    play();
+  }
+
+  function siftDown(i, pc){
+    const n = heap.length;
+    while(true){
+      const l = 2*i+1, r = 2*i+2;
+      let t = i;
+      if(l < n && preferred(heap[l].val, heap[t].val)) t = l;
+      if(r < n && preferred(heap[r].val, heap[t].val)) t = r;
+      const cmpIds = [heap[i].id];
+      if(l < n) cmpIds.push(heap[l].id);
+      if(r < n) cmpIds.push(heap[r].id);
+      const figli = [l<n?heap[l].val:null, r<n?heap[r].val:null].filter(x=>x!==null).join(' e ');
+      note(pc.compare, heap[i].id, cmpIds, figli ? `Confronto <b>${heap[i].val}</b> con i figli (<b>${figli}</b>).` : `<b>${heap[i].val}</b> non ha figli: si ferma. ✅`);
+      if(t !== i){
+        const movedVal = heap[i].val;
+        [heap[i], heap[t]] = [heap[t], heap[i]];
+        note(pc.swap, heap[t].id, [], `Il ${cmpWord()} dei figli è <b>${heap[i].val}</b> → <b>SWAP</b>: ${movedVal} <b>SCENDE</b> ⬇️.`);
+        i = t;
+      } else {
+        note(pc.stop, heap[i].id, [], `<b>${heap[i].val}</b> è già al posto giusto rispetto ai figli → fine. ✅`);
+        break;
+      }
+    }
+  }
+
+  function deleteRoot(){
+    frames = []; curOp = 'delete';
+    if(heap.length === 0){ note(null, null, [], "L'heap è vuoto: niente da cancellare."); play(); return; }
+    const rootId = heap[0].id, rootVal = heap[0].val;
+    note(1, rootId, [rootId], `Salvo la radice <b>${rootVal}</b>: è il <b>${rootWord()}</b> da restituire.`, {rootDelete:true});
+    const last = heap.pop();
+    if(heap.length === 0){
+      note(3, null, [], `Era rimasto solo <b>${rootVal}</b>: heap ora vuoto.`);
+      note(12, null, [], `✅ Rimozione completata. Valore estratto: <b>${rootVal}</b>.`);
+      play(); return;
+    }
+    heap[0] = last;
+    note(4, heap[0].id, [], `Sposto l'ultimo elemento <b>${last.val}</b> in radice, poi lo faccio <b>SCENDERE</b> finché serve.`);
+    siftDown(0, {compare:7, swap:9, stop:11});
+    note(12, null, [], `✅ Rimozione completata. Valore estratto: <b>${rootVal}</b>. L'heap è di nuovo valido.`);
+    play();
+  }
+
+  function buildHeap(values){
+    frames = []; curOp = 'build';
+    heap = values.map(v => ({id: nodeId++, val:v}));
+    const n = heap.length;
+    note(1, null, [], `Costruzione heap da array non ordinato: [${values.join(', ')}].`);
+    for(let i = Math.floor(n/2) - 1; i >= 0; i--){
+      note(2, heap[i].id, [], `Elaboro il sotto-albero radicato in indice <b>${i}</b> (valore <b>${heap[i].val}</b>).`);
+      siftDown(i, {compare:3, swap:3, stop:3});
+    }
+    note(null, null, [], `✅ Heap costruita in tempo O(n).`);
+    play();
+  }
+
+  // ---- layout albero ----
+  function computeLayout(arr){
+    const n = arr.length;
+    const levels = n > 0 ? Math.floor(Math.log2(n)) + 1 : 1;
+    const W = 900, top = 40, levelH = 70;
+    const H = Math.max(220, top + (levels-1)*levelH + 60);
+    const positions = new Map();
+    for(let i=0;i<n;i++){
+      const level = Math.floor(Math.log2(i+1));
+      const idxInLevel = i - (2**level - 1);
+      const count = 2**level;
+      const x = (idxInLevel + 0.5) / count * W;
+      const y = top + level*levelH;
+      positions.set(arr[i].id, {x,y});
+    }
+    return {positions, W, H};
+  }
+
+  // ---- pool di elementi DOM persistenti (per animare, non ridisegnare) ----
+  // Il fade in/out di ogni nodo/arco è guidato da un timestamp assoluto (bornAt/exitAt),
+  // non da un progresso relativo al singolo tween: così resta corretto anche se il
+  // browser rallenta/salta requestAnimationFrame (tab in background, rendering lento),
+  // invece di restare bloccato a metà ogni volta che un nuovo passo interrompe il tween precedente.
+  const FADE_MS = reducedMotion ? 0 : 380;
+  function fadeProgress(bornAt, exitAt, now){
+    if(exitAt != null){
+      const t = FADE_MS === 0 ? 1 : Math.min(1, (now-exitAt)/FADE_MS);
+      return 1 - easeInOutCubic(t);
+    }
+    const t = FADE_MS === 0 ? 1 : Math.min(1, (now-bornAt)/FADE_MS);
+    return easeInOutCubic(t);
+  }
+
+  function ensureNodeEl(id){
+    let rec = nodeEls.get(id);
+    if(rec) return rec;
+    const g = document.createElementNS(NS,'g');
+    const circle = document.createElementNS(NS,'circle');
+    circle.setAttribute('r','21');
+    circle.setAttribute('cx','0'); circle.setAttribute('cy','0');
+    circle.setAttribute('filter','url(#softShadow)');
+    const text = document.createElementNS(NS,'text');
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('x','0'); text.setAttribute('y','5');
+    text.setAttribute('font-size','15');
+    text.setAttribute('font-weight','700');
+    g.appendChild(circle); g.appendChild(text);
+    nodesLayer.appendChild(g);
+    rec = {g, circle, text, bornAt: performance.now(), exitAt: null};
+    nodeEls.set(id, rec);
+    return rec;
+  }
+  function ensureEdgeEl(childId){
+    let line = edgeEls.get(childId);
+    if(line) return line;
+    line = document.createElementNS(NS,'line');
+    line.setAttribute('stroke','#c9c0a4');
+    line.setAttribute('stroke-width','2.2');
+    line.setAttribute('stroke-linecap','round');
+    edgesLayer.appendChild(line);
+    line._bornAt = performance.now();
+    line._exitAt = null;
+    edgeEls.set(childId, line);
+    return line;
+  }
+
+  function tweenDuration(){
+    if(reducedMotion) return 0;
+    const speed = +$('#speed').value;
+    return Math.max(150, Math.min(420, speed*0.55));
+  }
+  function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+
+  // requestAnimationFrame viene sospeso dai browser quando il tab non è visibile
+  // (cambio tab, finestra minimizzata): senza fallback l'animazione resterebbe
+  // bloccata a metà finché il tab non torna in primo piano. setTimeout garantisce
+  // che lo stato converga comunque a quello corretto, anche se non fluido.
+  function scheduleTick(cb){
+    let done = false;
+    const fire = (now)=>{ if(done) return; done = true; cb(now); };
+    const rafHandle = requestAnimationFrame(fire);
+    const timerHandle = setTimeout(()=>fire(performance.now()), 40);
+    return {rafHandle, timerHandle};
+  }
+  function cancelTick(handle){
+    if(!handle) return;
+    cancelAnimationFrame(handle.rafHandle);
+    clearTimeout(handle.timerHandle);
+  }
+
+  function animateTo(targetPos, edgeParent, enteringIds, exitingIds){
+    if(rafId){ cancelTick(rafId); rafId = null; }
+    const duration = tweenDuration();
+    const startTime = performance.now();
+    const startPos = new Map(curPos);
+    for(const id of enteringIds) startPos.set(id, targetPos.get(id));
+    const allIds = new Set([...startPos.keys(), ...targetPos.keys()]);
+
+    const now0 = performance.now();
+    for(const id of exitingIds){
+      const rec = nodeEls.get(id);
+      if(rec && rec.exitAt == null) rec.exitAt = now0;
+    }
+    const newEdgeKeys = new Set(edgeParent.keys());
+    for(const childId of newEdgeKeys) ensureEdgeEl(childId);
+    for(const [childId, line] of edgeEls){
+      if(!newEdgeKeys.has(childId) && line._exitAt == null) line._exitAt = now0;
+    }
+
+    function tick(now){
+      const t = duration === 0 ? 1 : Math.min(1, (now-startTime)/duration);
+      const e = easeInOutCubic(t);
+      const live = new Map();
+      for(const id of allIds){
+        const p0 = startPos.get(id) || targetPos.get(id);
+        const p1 = targetPos.get(id) || p0;
+        if(!p0 || !p1) continue;
+        const x = p0.x + (p1.x-p0.x)*e;
+        const y = p0.y + (p1.y-p0.y)*e;
+        live.set(id, {x,y});
+        const rec = nodeEls.get(id);
+        if(!rec) continue;
+        const fp = fadeProgress(rec.bornAt, rec.exitAt, now);
+        const scale = rec.exitAt != null ? (0.6+0.4*fp) : (0.35+0.65*fp);
+        rec.g.setAttribute('transform', `translate(${x},${y}) scale(${scale})`);
+        rec.g.style.opacity = fp;
+      }
+      for(const [childId, line] of edgeEls){
+        let parentId = edgeParent.has(childId) ? edgeParent.get(childId) : null;
+        if(parentId == null && line.dataset.parentId) parentId = Number(line.dataset.parentId);
+        const childXY = live.get(childId);
+        const parentXY = parentId != null ? live.get(parentId) : null;
+        if(childXY && parentXY){
+          line.setAttribute('x1', parentXY.x); line.setAttribute('y1', parentXY.y);
+          line.setAttribute('x2', childXY.x); line.setAttribute('y2', childXY.y);
+          if(parentId != null) line.dataset.parentId = parentId;
+        }
+        line.style.opacity = fadeProgress(line._bornAt, line._exitAt, now);
+      }
+      // rimozione definitiva dal DOM una volta completato il fade-out, indipendente dal tween di posizione
+      for(const [id, rec] of nodeEls){
+        if(rec.exitAt != null && (now-rec.exitAt) >= FADE_MS){ rec.g.remove(); nodeEls.delete(id); curPos.delete(id); }
+      }
+      for(const [childId, line] of edgeEls){
+        if(line._exitAt != null && (now-line._exitAt) >= FADE_MS){ line.remove(); edgeEls.delete(childId); }
+      }
+      const pendingExit = [...nodeEls.values()].some(r=>r.exitAt!=null) || [...edgeEls.values()].some(l=>l._exitAt!=null);
+      if(t < 1 || pendingExit){
+        rafId = scheduleTick(tick);
+      } else {
+        for(const id of targetPos.keys()) curPos.set(id, targetPos.get(id));
+        rafId = null;
+      }
+    }
+    rafId = scheduleTick(tick);
+  }
+
+  function renderArrayView(frame){
+    const cells = frame.arr.map((item, i)=>{
+      let style = '';
+      if(item.id === frame.move){
+        style = frame.rootDelete ? 'background:var(--del);color:#fff;border-color:#c62828'
+                                  : 'background:var(--move);color:#fff;border-color:var(--moveb)';
+      } else if(frame.cmp.includes(item.id)){
+        style = 'border-color:var(--cmp);border-width:2px';
+      }
+      return `<div class="cell" style="${style}"><small>${i}</small>${item.val}</div>`;
+    }).join('');
+    $('#arr').innerHTML = cells || '<span style="color:#bbb">array vuoto</span>';
+  }
+
+  function render(frame){
+    renderPseudo(frame.op, frame.pc);
+    updateComplexity(frame.op);
+    $('#msg').innerHTML = frame.msg;
+    $('#counter').textContent = frames.length ? `passo ${fi+1}/${frames.length}` : '';
+    renderArrayView(frame);
+
+    const {positions, H} = computeLayout(frame.arr);
+    svg.setAttribute('viewBox', `0 0 900 ${H}`);
+    emptyLabel.style.opacity = frame.arr.length === 0 ? 1 : 0;
+
+    const targetIds = new Set(frame.arr.map(o=>o.id));
+    const enteringIds = [...targetIds].filter(id=>!curPos.has(id));
+    const exitingIds = [...curPos.keys()].filter(id=>!targetIds.has(id));
+
+    for(const item of frame.arr){
+      const rec = ensureNodeEl(item.id);
+      let fill='var(--node)', stroke='var(--nodeb)', sw=2, tc='#2a2a2a';
+      if(frame.cmp.includes(item.id)){ stroke='var(--cmp)'; sw=4; }
+      if(frame.rootDelete && item.id===frame.move){ fill='var(--del)'; stroke='#c62828'; tc='#fff'; }
+      else if(item.id === frame.move){ fill='var(--move)'; stroke='var(--moveb)'; tc='#fff'; }
+      rec.circle.setAttribute('fill', fill);
+      rec.circle.setAttribute('stroke', stroke);
+      rec.circle.setAttribute('stroke-width', sw);
+      rec.text.setAttribute('fill', tc);
+      rec.text.textContent = item.val;
+    }
+
+    const edgeParent = new Map();
+    for(let i=1;i<frame.arr.length;i++){
+      edgeParent.set(frame.arr[i].id, frame.arr[(i-1)>>1].id);
+    }
+
+    animateTo(positions, edgeParent, enteringIds, exitingIds);
+  }
+
+  // ---- player ----
+  function updatePlayBtn(){ $('#playPause').textContent = timer ? '⏸ Pausa' : '▶ Play'; }
+  function startTimer(){
+    if(timer) clearInterval(timer);
+    timer = setInterval(()=>{
+      if(fi < frames.length-1){ fi++; render(frames[fi]); }
+      else { clearInterval(timer); timer=null; updatePlayBtn(); }
+    }, +$('#speed').value);
+    updatePlayBtn();
+  }
+  function play(){
+    if(timer){ clearInterval(timer); timer=null; }
+    fi = 0;
+    if(!frames.length) return;
+    render(frames[0]);
+    startTimer();
+  }
+  function stop(){ if(timer){ clearInterval(timer); timer=null; } updatePlayBtn(); }
+  function togglePlay(){
+    if(timer){ stop(); return; }
+    if(!frames.length) return;
+    if(fi >= frames.length-1){ fi = 0; render(frames[0]); }
+    startTimer();
+  }
+  function step(d){
+    stop();
+    if(!frames.length) return;
+    fi = Math.max(0, Math.min(frames.length-1, fi+d));
+    render(frames[fi]);
+  }
+
+  // ---- eventi ----
+  $('#typeSeg').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    type = b.dataset.t;
+    [...$('#typeSeg').children].forEach(x=>x.classList.toggle('active', x===b));
+    heap=[]; frames=[]; curOp=null;
+    render({arr:[], move:null, cmp:[], msg:`Modalità <b>${type}-heap</b>: ${ruleWord()}. Inserisci qualche numero.`});
+  });
+  $('#ins').addEventListener('click', ()=>{
+    const v = parseInt($('#val').value, 10);
+    if(Number.isNaN(v)){ $('#msg').innerHTML = 'Scrivi un numero nel campo "Valore".'; return; }
+    insert(v); $('#val').value=''; $('#val').focus();
+  });
+  $('#val').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#ins').click(); });
+  $('#del').addEventListener('click', deleteRoot);
+  $('#reset').addEventListener('click', ()=>{
+    heap=[]; frames=[]; curOp=null;
+    render({arr:[], move:null, cmp:[], msg:'Reset fatto. Heap vuoto.'});
+  });
+  $('#rand').addEventListener('click', ()=>{
+    const k = 6 + Math.floor(Math.random()*5);
+    const values = Array.from({length:k}, ()=> 1 + Math.floor(Math.random()*49));
+    buildHeap(values);
+  });
+  $('#buildBtn').addEventListener('click', ()=>{
+    const raw = $('#buildInput').value;
+    const values = raw.split(/[,\s]+/).filter(Boolean).map(Number).filter(x=>!Number.isNaN(x)).slice(0,24);
+    if(!values.length){ $('#msg').innerHTML = 'Scrivi un elenco di numeri separati da virgola, es. 9,4,7,1,5.'; return; }
+    buildHeap(values); $('#buildInput').value='';
+  });
+  $('#buildInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#buildBtn').click(); });
+  $('#next').addEventListener('click', ()=>step(1));
+  $('#prev').addEventListener('click', ()=>step(-1));
+  $('#playPause').addEventListener('click', togglePlay);
+
+  document.addEventListener('keydown', e=>{
+    const tag = document.activeElement.tagName;
+    if(tag==='INPUT' || tag==='TEXTAREA') return;
+    if(e.code==='Space'){ e.preventDefault(); togglePlay(); }
+    else if(e.key==='ArrowRight'){ e.preventDefault(); step(1); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); step(-1); }
+  });
+
+  // start
+  render({arr:[], move:null, cmp:[], msg:"Modalità <b>min-heap</b>: ogni nodo deve essere ≤ dei figli. Inserisci qualche numero, oppure prova 🎲 o 🏗️."});
+})();
+</script>
+</body>
+</html>
