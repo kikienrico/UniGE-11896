@@ -49,6 +49,14 @@ Tre visualizzatori per esercitarsi con le strutture dati di ASD, ognuno in un si
 
 Ogni simulatore mostra la struttura graficamente e permette di eseguire le operazioni una alla volta, per capire *cosa succede* a ogni passo — lo stesso ragionamento richiesto negli esercizi d'esame.
 
+<div align="center">
+<a href="https://kikienrico.github.io/UniGE-11896/80298%20Algoritmi%20e%20Strutture%20Dati/Simulatori/bst_visualizer.html">
+<img src="./images/bst_simulator.png" alt="Il BST Visualizer in azione: albero costruito passo-passo, sequenza in-order e pseudocodice a fianco" width="850">
+</a>
+<br>
+<sub>Il BST Visualizer in azione — clicca l'immagine per provarlo</sub>
+</div>
+
 ## Come sono organizzati gli appunti
 
 Di ogni lezione esistono, solitamente, tre versioni:
