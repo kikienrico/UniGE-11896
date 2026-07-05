@@ -54,7 +54,16 @@ Ogni simulatore mostra la struttura graficamente e permette di eseguire le opera
 <img src="./images/bst_simulator.png" alt="Il BST Visualizer in azione: albero costruito passo-passo, sequenza in-order e pseudocodice a fianco" width="850">
 </a>
 <br>
-<sub>Il BST Visualizer in azione — clicca l'immagine per provarlo</sub>
+<sub>Il BST Visualizer in azione</sub>
+<br><br>
+<a href="https://kikienrico.github.io/UniGE-11896/80298%20Algoritmi%20e%20Strutture%20Dati/Simulatori/heap_visualizer.html">
+<img src="./images/heap_simulator.png" alt="Lo Heap Visualizer: min-heap costruita con build-heap O(n), vista ad albero e come array" width="49%">
+</a>
+<a href="https://kikienrico.github.io/UniGE-11896/80298%20Algoritmi%20e%20Strutture%20Dati/Simulatori/hash_visualizer.html">
+<img src="./images/hash_simulator.png" alt="Lo Hash Table Visualizer: tabella con 7 bucket, catene di collisione e calcolo di h(k) passo-passo" width="49%">
+</a>
+<br>
+<sub>Heap e Hash Table Visualizer — clicca un'immagine per provare il simulatore</sub>
 </div>
 
 ## Come sono organizzati gli appunti
